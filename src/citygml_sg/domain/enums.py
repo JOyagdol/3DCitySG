@@ -10,6 +10,9 @@ class NodeType(str, Enum):
     BOUNDARY_SURFACE = "BoundarySurface"
     OPENING = "Opening"
     BUILDING_FURNITURE = "BuildingFurniture"
+    POLYGON = "Polygon"
+    LINEAR_RING = "LinearRing"
+    POSITION = "Position"
 
 
 class RelationType(str, Enum):
@@ -19,3 +22,7 @@ class RelationType(str, Enum):
     TOUCHES = "TOUCHES"
     CONNECTS = "CONNECTS"
     BOUNDED_BY = "BOUNDED_BY"
+    HAS_OPENING = "HAS_OPENING"
+    HAS_GEOMETRY = "HAS_GEOMETRY"
+    HAS_RING = "HAS_RING"
+    HAS_POS = "HAS_POS"

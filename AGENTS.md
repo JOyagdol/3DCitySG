@@ -125,6 +125,35 @@ Avoid:
 - Implement v1 functions first; avoid speculative framework code.
 - Add concise docstrings for non-trivial modules.
 
+## Runtime Reporting Convention (Required)
+
+For all import/transform pipeline executions, print a **terminal conversion report** and keep it maintained as features evolve.
+
+Minimum required report content:
+
+- Building-centric main feature count (`Building` count)
+- Theme counts:
+  - semantic nodes
+  - geometry nodes
+  - semantic relations
+  - spatial relations
+  - geometry relations
+- Node type counts and relation type counts
+- Property enrichment stats:
+  - `gml_name` coverage
+  - generic attribute coverage
+- Geometry density stats:
+  - rings per polygon
+  - positions per ring
+- Per-building breakdown:
+  - parts, rooms, boundaries, openings, furniture
+  - polygons, rings, positions
+  - naming/attribute stats
+- Stage checklist and completion status (`DONE`/`NONE`)
+- Stage durations (seconds) and total runtime
+
+When new transformation steps are added, update this report in the same commit.
+
 ## Target Package Structure
 
 ```text

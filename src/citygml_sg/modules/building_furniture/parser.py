@@ -5,7 +5,11 @@ from __future__ import annotations
 from xml.etree.ElementTree import Element
 
 from citygml_sg.domain.city_objects import BuildingFurniture
-from citygml_sg.utils.xml import find_first_lod, get_first_child_text, get_gml_id
+from citygml_sg.utils.xml import (
+    get_direct_child_texts,
+    get_first_direct_child_text,
+    parse_common_object_properties,
+)
 
 
 def parse_building_furniture(raw: dict) -> BuildingFurniture:
@@ -20,15 +24,13 @@ def parse_building_furniture(raw: dict) -> BuildingFurniture:
 
 
 def parse_building_furniture_element(element: Element) -> dict:
-    klass = get_first_child_text(element, "class")
-    function = get_first_child_text(element, "function")
-    usage = get_first_child_text(element, "usage")
+    properties = parse_common_object_properties(element)
+    klass = get_first_direct_child_text(element, "class")
+    functions = get_direct_child_texts(element, "function")
+    usages = get_direct_child_texts(element, "usage")
 
-    return {
-        "gml_id": get_gml_id(element),
-        "object_type": "BuildingFurniture",
-        "class": klass,
-        "function": [function] if function else [],
-        "usage": [usage] if usage else [],
-        "lod": find_first_lod(element),
-    }
+    properties["object_type"] = "BuildingFurniture"
+    properties["class"] = klass
+    properties["function"] = functions
+    properties["usage"] = usages
+    return properties

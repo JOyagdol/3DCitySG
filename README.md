@@ -217,11 +217,19 @@ src/citygml_sg/
   - `python scripts/run_import.py --input <path> --output <path>`
 - Added module-level parsing hooks for:
   - Building, BuildingPart, Room, BoundarySurface, Opening (Door/Window), BuildingFurniture
+- Added node property enrichment from CityGML content:
+  - `gml:name` -> `gml_name`, `gml_name_all`
+  - `gen:*Attribute` -> flattened node properties (e.g., `attr_grossplannedarea`)
 - Added graph build path that currently generates:
   - `CONTAINS` (Building/BuildingPart/Room hierarchy and Room->Furniture)
   - `BOUNDED_BY` (Room->BoundarySurface)
+  - `HAS_OPENING` (BoundarySurface->Opening)
   - `CONNECTS` (Opening->Room)
   - `INSIDE` (Furniture->Room)
+- Added geometry subgraph extraction:
+  - object -> `HAS_GEOMETRY` -> Polygon
+  - Polygon -> `HAS_RING` -> LinearRing
+  - LinearRing -> `HAS_POS` -> Position(x, y, z, order)
 - Added JSON export for parsed graph summary:
   - node counts, relation counts, node list, edge list
 - Added sample CityGML input for quick smoke tests:
