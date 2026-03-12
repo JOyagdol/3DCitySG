@@ -1,0 +1,73 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test, lint, coverage, and type-check caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE and editor settings
+.vscode/
+.idea/
+*.code-workspace
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local secrets and machine-specific overrides
+.env
+.env.*
+*.local
+configs/*local*.yaml
+configs/*secret*.yaml
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+
+# Data artifacts
+data/interim/*
+!data/interim/.gitkeep
+
+data/output/*
+!data/output/.gitkeep
+
+# Input datasets: keep only curated sample files in git
+data/input/*
+!data/input/.gitkeep
+!data/input/sample_citygml_v2.gml
+!data/input/fzk_haus_lod2_v2.gml
+
+# Explicitly keep this large/sensitive source out of git
+data/input/(210812)E-TYPE_201dong-IFC4.gml
+
+# Neo4j export artifacts
+*.dump
+*.cypher

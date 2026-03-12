@@ -1,0 +1,14 @@
+project:
+  name: citygml-scene-graph
+  citygml_version: "2.0"
+
+pipeline:
+  input_path: data/input
+  output_path: data/output
+  enable_relations: true
+
+neo4j:
+  uri: bolt://localhost:7687
+  username: neo4j
+  password: neo4j
+  database: neo4j

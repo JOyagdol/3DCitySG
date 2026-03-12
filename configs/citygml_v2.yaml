@@ -1,0 +1,6 @@
+citygml:
+  version: "2.0"
+  namespaces:
+    core: "http://www.opengis.net/citygml/2.0"
+    bldg: "http://www.opengis.net/citygml/building/2.0"
+    gml: "http://www.opengis.net/gml"

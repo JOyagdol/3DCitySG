@@ -1,0 +1,159 @@
+# AGENTS.md
+
+## Project Overview
+
+This project is a **Python migration and redesign** of an existing Java-based CityGML-to-Neo4j pipeline.
+
+The original Java project parses **CityGML / CityJSON** data and stores semantic graph structures in **Neo4j**.
+The new Python project goes beyond basic parsing/ingestion and targets:
+
+1. CityGML semantic object parsing
+2. Geometry normalization
+3. Spatial relation extraction
+4. Scene graph construction
+5. Neo4j graph persistence
+6. Research extensibility for:
+   - ontology alignment
+   - sensor/document linkage
+   - LLM/agent-based querying
+   - multimodal scene understanding
+
+This codebase is the implementation basis for research on **CityGML-based spatial scene graph construction**.
+
+## Primary Goal
+
+Build a Python-based CityGML scene graph pipeline that supports:
+
+- Building
+- BuildingPart
+- Room
+- BoundarySurface
+- Opening
+- Door
+- Window
+- BuildingFurniture
+
+The system must support both:
+
+- semantic hierarchy extraction
+- spatial relation enrichment
+
+This is specifically a **CityGML indoor/outdoor semantic-spatial graph construction** project.
+
+## Current Scope
+
+### In Scope
+
+- Parse CityGML building-related objects
+- Create internal graph node/edge representations
+- Extract geometry metadata:
+  - geometry references
+  - bounding boxes
+  - centroids
+  - LoD
+- Generate hierarchy relations:
+  - `CONTAINS`
+  - `BOUNDED_BY`
+  - `HAS_OPENING`
+- Generate spatial relations:
+  - `INSIDE`
+  - `ADJACENT_TO`
+  - `TOUCHES`
+  - `INTERSECTS`
+  - `CONNECTS`
+- Persist enriched graphs to Neo4j
+
+### Explicitly In Scope for v1
+
+- Building
+- BuildingPart
+- Room
+- BoundarySurface
+- Opening
+- Door
+- Window
+- BuildingFurniture
+
+### Out of Scope for Now
+
+- full IFC/BIM conversion
+- point cloud processing pipelines
+- computer vision pipelines
+- UI/dashboard development
+- document ingestion systems
+- RAG/chat systems
+- production-scale optimization
+- cloud deployment infrastructure
+- microservice architecture
+- support for every CityGML module at once
+
+## Development Philosophy
+
+This is a migration project, but **not** a line-by-line translation project.
+
+The Python codebase should:
+
+- preserve useful semantic structure from the Java project
+- improve modularity and research extensibility
+- separate parsing, graph construction, relation extraction, and storage concerns
+- stay clean, typed, and easy to iterate on
+
+Do **not** mechanically mirror Java classes if better Python structure exists.
+
+Prefer:
+
+- simplicity
+- explicitness
+- modular design
+- testable functions
+- typed dataclasses and clean models
+
+Avoid:
+
+- premature abstraction
+- unnecessary deep inheritance
+- database-coupled business logic
+- overengineering
+
+## Engineering Conventions
+
+- Keep parser logic and relation logic separated.
+- Keep graph model and persistence adapter separated (`graph/` vs `storage/neo4j/`).
+- Treat `BuildingFurniture` as a first-class v1 object.
+- Use clear type hints for all public functions.
+- Keep relation labels uppercase and explicit (`CONTAINS`, `INSIDE`, etc.).
+- Implement v1 functions first; avoid speculative framework code.
+- Add concise docstrings for non-trivial modules.
+
+## Target Package Structure
+
+```text
+src/citygml_sg/
+|-- app/
+|-- config/
+|-- domain/
+|-- parsers/
+|-- extractors/
+|-- modules/
+|   |-- building/
+|   |-- building_part/
+|   |-- room/
+|   |-- boundary_surface/
+|   |-- opening/
+|   `-- building_furniture/
+|-- relations/
+|-- graph/
+|-- storage/
+|   `-- neo4j/
+`-- utils/
+```
+
+## Definition of Done (v1-oriented)
+
+For v1 tasks, prioritize completion in this order:
+
+1. Parse target object families reliably from CityGML
+2. Build consistent internal graph nodes/edges
+3. Add hierarchy and core spatial relations
+4. Persist graph to Neo4j
+5. Provide runnable scripts and reproducible outputs
