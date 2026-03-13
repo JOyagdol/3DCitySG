@@ -1,1 +1,2 @@
-﻿"""TODO: Implement lod_extractor."""
+﻿"""Planned module stub for lod_extractor. Status: not wired in v1 pipeline."""
+

@@ -23,6 +23,16 @@ def build_parser() -> argparse.ArgumentParser:
         default="data/output/import_summary.json",
         help="Output JSON path",
     )
+    import_parser.add_argument(
+        "--to-neo4j",
+        action="store_true",
+        help="Persist generated graph nodes/edges to Neo4j",
+    )
+    import_parser.add_argument(
+        "--config",
+        default="configs/default.yaml",
+        help="Project config path containing neo4j connection info",
+    )
 
     subparsers.add_parser("relations", help="Extract spatial relations")
     subparsers.add_parser("export", help="Export graph to target storage")
@@ -35,7 +45,12 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.command == "import":
-        return run_import_pipeline(args.input, args.output)
+        return run_import_pipeline(
+            args.input,
+            args.output,
+            to_neo4j=args.to_neo4j,
+            config_path=args.config,
+        )
     if args.command == "relations":
         return run_relation_pipeline()
     if args.command == "export":

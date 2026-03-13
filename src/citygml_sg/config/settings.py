@@ -7,6 +7,7 @@ from typing import Any
 
 import yaml
 
+from citygml_sg.config import DEFAULT_CITYGML_VERSION, normalize_citygml_version
 from citygml_sg.config.schema import Neo4jConfig, PipelineConfig, ProjectConfig
 
 
@@ -24,9 +25,11 @@ def load_project_config(path: str | Path) -> ProjectConfig:
     pipeline_raw = _as_dict(raw.get("pipeline"))
     neo4j_raw = _as_dict(raw.get("neo4j"))
 
+    citygml_version = normalize_citygml_version(str(project_raw.get("citygml_version", DEFAULT_CITYGML_VERSION)))
+
     return ProjectConfig(
         name=str(project_raw.get("name", "citygml-scene-graph")),
-        citygml_version=str(project_raw.get("citygml_version", "2.0")),
+        citygml_version=citygml_version,
         pipeline=PipelineConfig(
             input_path=str(pipeline_raw.get("input_path", "data/input")),
             output_path=str(pipeline_raw.get("output_path", "data/output")),
@@ -37,5 +40,6 @@ def load_project_config(path: str | Path) -> ProjectConfig:
             username=str(neo4j_raw.get("username", "neo4j")),
             password=str(neo4j_raw.get("password", "neo4j")),
             database=str(neo4j_raw.get("database", "neo4j")),
+            batch_size=int(neo4j_raw.get("batch_size", 5000)),
         ),
     )

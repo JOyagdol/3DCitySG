@@ -11,6 +11,7 @@ class Neo4jConfig:
     username: str
     password: str
     database: str = "neo4j"
+    batch_size: int = 5000
 
 
 @dataclass(slots=True)

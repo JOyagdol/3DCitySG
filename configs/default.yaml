@@ -1,5 +1,6 @@
 project:
   name: citygml-scene-graph
+  # v1 research baseline; keep 2.0 default until 3.0 parsing scope is enabled.
   citygml_version: "2.0"
 
 pipeline:
@@ -10,5 +11,6 @@ pipeline:
 neo4j:
   uri: bolt://localhost:7687
   username: neo4j
-  password: neo4j
+  password: 3dcitysg
   database: neo4j
+  batch_size: 5000

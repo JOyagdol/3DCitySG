@@ -6,4 +6,4 @@ from pathlib import Path
 
 
 def write_parquet_placeholder(path: str | Path) -> None:
-    Path(path).write_text("TODO: parquet export implementation", encoding="utf-8")
+    Path(path).write_text("Planned stub: parquet export adapter is not wired in v1.", encoding="utf-8")

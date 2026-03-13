@@ -2,10 +2,11 @@
 
 ## Project Overview
 
-This project is a **Python migration and redesign** of an existing Java-based CityGML-to-Neo4j pipeline.
+This project is a **research-focused CityGML semantic-spatial scene graph framework**.
+Current implementation baseline is **CityGML 2.0**.
 
-The original Java project parses **CityGML / CityJSON** data and stores semantic graph structures in **Neo4j**.
-The new Python project goes beyond basic parsing/ingestion and targets:
+The codebase is informed by prior Java work, but the primary goal is not one-to-one migration.
+It targets:
 
 1. CityGML semantic object parsing
 2. Geometry normalization
@@ -18,7 +19,7 @@ The new Python project goes beyond basic parsing/ingestion and targets:
    - LLM/agent-based querying
    - multimodal scene understanding
 
-This codebase is the implementation basis for research on **CityGML-based spatial scene graph construction**.
+This codebase is the implementation basis for research on **CityGML-based spatial scene graph construction (CityGML 2.0 baseline)**.
 
 ## Primary Goal
 
@@ -59,7 +60,7 @@ This is specifically a **CityGML indoor/outdoor semantic-spatial graph construct
   - `INSIDE`
   - `ADJACENT_TO`
   - `TOUCHES`
-  - `INTERSECTS`
+  - `INTERSECTS` (planned; extraction not enabled in current pipeline)
   - `CONNECTS`
 - Persist enriched graphs to Neo4j
 
@@ -125,6 +126,15 @@ Avoid:
 - Implement v1 functions first; avoid speculative framework code.
 - Add concise docstrings for non-trivial modules.
 
+## CityGML Version Baseline (Required)
+
+- Default conversion target is **CityGML 2.0** for current v1 research experiments.
+- Keep this explicit in documentation (`README.md`, scorecard docs, run guides).
+- Keep version constants/config variables ready for future expansion:
+  - `project.citygml_version` in config
+  - `SUPPORTED_CITYGML_VERSIONS` / `DEFAULT_CITYGML_VERSION` in code
+- If adding CityGML 3.0 parsing paths, do not silently change v1 defaults.
+
 ## Runtime Reporting Convention (Required)
 
 For all import/transform pipeline executions, print a **terminal conversion report** and keep it maintained as features evolve.
@@ -151,8 +161,17 @@ Minimum required report content:
   - naming/attribute stats
 - Stage checklist and completion status (`DONE`/`NONE`)
 - Stage durations (seconds) and total runtime
+- In-progress timeline logs during execution:
+  - per-stage `START` / `DONE` / `SKIP`
+  - stage progress bar (`[####-----]`) and elapsed time
 
 When new transformation steps are added, update this report in the same commit.
+
+Also include and maintain scorecard criteria comments in both code and docs:
+
+- `overall = 0.40 * node + 0.30 * relation + 0.30 * property`
+- Expected totals must be computed from **currently supported extraction scope** (fair denominator policy), not from all possible CityGML tags.
+- Detailed scoring policy source of truth: `docs/evaluation_scorecard.md`.
 
 ## Target Package Structure
 

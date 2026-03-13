@@ -1,7 +1,24 @@
 # Relation Definitions
 
 - `CONTAINS`: outer bbox fully includes inner bbox.
+- `CONSISTS_OF_BUILDING_PART`: `Building|BuildingPart -> BuildingPart` (CityGML `consistsOfBuildingPart`).
+- `INTERIOR_ROOM`: `Building|BuildingPart -> Room` (CityGML `interiorRoom`).
+- `OUTER_BUILDING_INSTALLATION`: `Building|BuildingPart -> BuildingInstallation` (CityGML `outerBuildingInstallation`).
+- `INTERIOR_BUILDING_INSTALLATION`: `Building|BuildingPart -> IntBuildingInstallation` (CityGML `interiorBuildingInstallation`).
+- `ROOM_INSTALLATION`: `Room -> IntBuildingInstallation` (CityGML `roomInstallation`).
+- `INTERIOR_FURNITURE`: `Room -> BuildingFurniture` (CityGML `interiorFurniture`).
+- `HAS_CITY_OBJECT`: `cityObjectMember -> CityObject`.
+- `HAS_GROUP_MEMBER`: `CityObjectGroup -> groupMember CityObject`.
+- `BOUNDED_BY`: `Building|BuildingPart|Room|Installation -> BoundarySurface`.
+- `HAS_OPENING`: `BoundarySurface -> Opening`.
+- `HAS_ADDRESS`: `Building|BuildingPart -> Address`.
+- `HAS_APPEARANCE`: semantic object to `Appearance`.
+- `HAS_SURFACE_DATA`: `Appearance -> SurfaceData`.
+- `APPLIES_TO`: `SurfaceData -> target geometry/surface node`.
+- `HAS_LOD_GEOMETRY`: owner object to generalized geometry nodes (`Geometry` / `ImplicitGeometry`).
+- `HAS_GEOMETRY_COMPONENT`: `Geometry -> Solid|MultiSurface|MultiCurve`.
 - `INSIDE`: inverse of `CONTAINS`.
 - `ADJACENT_TO`: bbox overlap/contact within relation tolerance.
 - `TOUCHES`: bbox boundaries touch.
+- `INTERSECTS`: geometry overlap/intersection relation (planned; extraction not enabled in current pipeline).
 - `CONNECTS`: an opening links two spaces.

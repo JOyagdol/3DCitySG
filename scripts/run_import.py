@@ -20,9 +20,26 @@ def build_parser() -> argparse.ArgumentParser:
         default="data/output/import_summary.json",
         help="Path to output summary JSON file",
     )
+    parser.add_argument(
+        "--to-neo4j",
+        action="store_true",
+        help="Persist generated graph nodes/edges to Neo4j",
+    )
+    parser.add_argument(
+        "--config",
+        default="configs/default.yaml",
+        help="Project config path containing neo4j connection info",
+    )
     return parser
 
 
 if __name__ == "__main__":
     args = build_parser().parse_args()
-    raise SystemExit(run_import_pipeline(args.input, args.output))
+    raise SystemExit(
+        run_import_pipeline(
+            args.input,
+            args.output,
+            to_neo4j=args.to_neo4j,
+            config_path=args.config,
+        )
+    )
