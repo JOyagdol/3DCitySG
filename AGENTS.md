@@ -125,6 +125,11 @@ Avoid:
 - Keep relation labels uppercase and explicit (`CONTAINS`, `INSIDE`, etc.).
 - Implement v1 functions first; avoid speculative framework code.
 - Add concise docstrings for non-trivial modules.
+- Keep documentation synchronized with code changes in every task.
+- When behavior/scope/commands/metrics change, update related docs in the same work unit:
+  - `README.md`
+  - `docs/*` (scorecard, schema, relations, regression, stubs, summaries)
+  - `AGENTS.md` conventions when policy changes
 
 ## CityGML Version Baseline (Required)
 
