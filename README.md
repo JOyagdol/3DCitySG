@@ -239,6 +239,12 @@ pytest tests/test_pipeline_regression.py
 
 ---
 
+## Development Summary (Korean)
+
+- 한국어 개발 진행 요약: `docs/development_summary_ko.md`
+
+---
+
 ## Current Scope
 
 ### In scope (v1 priority)
