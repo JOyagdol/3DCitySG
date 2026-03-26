@@ -88,5 +88,8 @@ def test_summary_keeps_scorecard_and_appearance_coverage(tmp_path: Path) -> None
 
     assert "scorecard" in summary
     assert summary["scorecard"]["criteria_comment"] == "overall=0.40*node + 0.30*relation + 0.30*property"
+    assert "spatial_coverage" in summary["scorecard"]
+    assert "spatial_precision_sanity" in summary["scorecard"]
+    assert "spatial_pair_stats" in summary["scorecard"]
     assert "appearance_coverage" in summary
     assert summary["appearance_coverage"]["appearance_node_count"] == 1

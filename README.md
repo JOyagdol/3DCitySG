@@ -83,7 +83,14 @@ Targets relation enrichment for:
 - `ADJACENT_TO`
 - `TOUCHES`
 - `CONNECTS`
-- `INTERSECTS` (planned; extraction not enabled in current pipeline)
+- `INTERSECTS`
+
+Current spatial inference baseline:
+
+- Geometry-derived AABB method (`bbox_aabb_v1`)
+- Pipeline uses `Object -> Polygon -> LinearRing -> Position` coordinates to build per-node bbox
+- Decision order: `INTERSECTS > TOUCHES > ADJACENT_TO`
+- Detailed spec: `docs/spatial_relation_spec_v1.md`
 
 ### Neo4j persistence
 
@@ -134,12 +141,12 @@ python -m pip install -U pip
 pip install -e .
 ```
 
-### 4) Configure your own Neo4j connection
+### 4) Configure your own runtime settings
 
-Before running `--to-neo4j`, set your local Neo4j connection in
+Before running, set your local settings in
 `configs/default.yaml` (or pass your own config file with `--config`).
 
-Use values from your own environment:
+Set Neo4j values from your own environment:
 
 ```yaml
 neo4j:
@@ -151,6 +158,17 @@ neo4j:
 ```
 Example (local default install): `bolt://localhost:7687`, `neo4j`, `<your-password>`, `neo4j`.
 For large imports, tune `batch_size` (e.g., `2000`~`10000`) based on memory and throughput.
+
+Set spatial inference thresholds for experiments:
+
+```yaml
+spatial:
+  touch_epsilon: 0.05
+  adjacent_epsilon: 0.50
+  intersection_epsilon: 0.000001
+```
+
+These values control `TOUCHES`/`ADJACENT_TO`/`INTERSECTS` decisions in import-time spatial relation extraction.
 
 ---
 
@@ -182,6 +200,26 @@ python -m citygml_sg.app.cli import --input "data/input/fzk_haus_lod2_v2.gml" --
 
 ```bash
 python -m citygml_sg.app.cli import --input "data/input/fzk_haus_lod2_v2.gml" --output data/output/my_import.json --to-neo4j --config configs/default.yaml
+```
+
+### Run query benchmark suite
+
+```bash
+python scripts/benchmark_queries.py --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
+```
+
+```bash
+python -m citygml_sg.app.cli benchmark --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
+```
+
+### Run import performance profiling
+
+```bash
+python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" --runs 3 --config configs/default.yaml
+```
+
+```bash
+python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" --runs 3 --to-neo4j --config configs/default.yaml
 ```
 
 Generated output:
@@ -217,7 +255,18 @@ When `--to-neo4j` is enabled, both node and edge export progress are printed as 
 
 - Score formula: `overall = 0.40 * node + 0.30 * relation + 0.30 * property`
 - Fairness rule: expected totals are computed from currently supported extraction scope, not every possible CityGML tag.
+- Spatial diagnostics are also exported in scorecard:
+  - `spatial_coverage`
+  - `spatial_precision_sanity`
+  - `spatial_pair_stats`
 - Detailed criteria and interpretation guide: `docs/evaluation_scorecard.md`
+
+---
+
+## Spatial Relation Spec
+
+- v1 relation spec (priority, thresholds, metadata, query criteria):
+  - `docs/spatial_relation_spec_v1.md`
 
 ---
 
@@ -228,6 +277,14 @@ When `--to-neo4j` is enabled, both node and edge export progress are printed as 
 
 ```bash
 pytest tests/test_pipeline_regression.py
+```
+
+```bash
+pytest tests/test_spatial_priority.py
+```
+
+```bash
+pytest tests/test_spatial_relation_pairs.py
 ```
 
 ---
@@ -241,7 +298,12 @@ pytest tests/test_pipeline_regression.py
 
 ## Development Summary (Korean)
 
-- 한국어 개발 진행 요약: `docs/development_summary_ko.md`
+- Korean development summary: `docs/development_summary_ko.md`
+- Korean query benchmark guide: `docs/query_benchmark_guide_ko.md`
+- Korean feature implementation guide: `docs/feature_implementation_guide_ko.md`
+- Korean performance profiling guide: `docs/performance_profiling_guide_ko.md`
+- v1 measurement runbook (Korean): `docs/v1_measurement_runbook_ko.md`
+- experiment result record template (Korean): `docs/experiment_results_ko.md`
 
 ---
 

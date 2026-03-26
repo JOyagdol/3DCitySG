@@ -19,11 +19,17 @@ Current baseline tests cover:
 
 1. `HAS_APPEARANCE` fallback link creation for global `Appearance`
 2. no duplicate `CONTAINS` when a specialized relation exists
-3. summary contract checks (`scorecard`, `appearance_coverage`)
+3. summary contract checks (`scorecard`, `appearance_coverage`, spatial diagnostic fields)
+4. spatial precedence normalization (`INTERSECTS > TOUCHES > ADJACENT_TO`)
+5. spatial pair generation for `Furniture-Door/Window`, `Furniture-BoundarySurface`, and `Furniture-Furniture` (`ADJACENT_TO`, `TOUCHES`)
+6. bidirectional materialization checks for inferred spatial relations
+7. negative checks for non-contact/non-adjacent/non-intersecting pairs
 
 Test file:
 
 - `tests/test_pipeline_regression.py`
+- `tests/test_spatial_priority.py`
+- `tests/test_spatial_relation_pairs.py`
 
 ## How To Run
 

@@ -32,3 +32,7 @@ class SceneGraph:
             return
         self.edge_keys.add(edge_key)
         self.edges.append(edge)
+
+    def replace_edges(self, edges: list[Edge]) -> None:
+        self.edges = list(edges)
+        self.edge_keys = {(edge.source_id, edge.relation, edge.target_id) for edge in self.edges}

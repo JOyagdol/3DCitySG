@@ -1,112 +1,129 @@
-# 3DCitySG 개발 진행 요약 (한글)
+# 3DCitySG 개발 진행 요약
 
-기준 시점: 현재 워크스페이스 최신 코드 상태
+기준일: 2026-03-26
 
-## 1. 작업 목표
+## 1. 현재 기준선
 
-CityGML 2.0 기반 건물 데이터를 의미-공간 장면 그래프로 변환하고,  
-그래프를 JSON/Neo4j로 내보내는 연구용 파이프라인을 안정화하는 것이 목표였다.
+1. 연구 초점: CityGML 기반 의미-공간 Scene Graph
+2. 실험 기준 버전: CityGML 2.0
+3. v1 핵심 객체:
+   - Building
+   - BuildingPart
+   - Room
+   - BoundarySurface
+   - Opening(Door/Window)
+   - BuildingFurniture
 
-## 2. 지금까지 완료한 주요 작업
+## 2. 완료된 작업
 
-## 2.1 객체/스키마 반영
+## 2.1 파싱/그래프 구성
 
-다음 객체군을 파이프라인에서 노드로 처리하도록 정리했다.
+1. 핵심 객체군 노드화 및 계층 관계 생성
+2. Geometry 하위 구조(Polygon, LinearRing, Position) 연결
+3. Appearance/SurfaceData fallback 소유자 연결
 
-1. CityObjectMember, CityObjectGroup
-2. Building, BuildingPart, Room
-3. BuildingInstallation, IntBuildingInstallation
-4. BoundarySurface(+ 하위 surface tag), Opening(Door/Window)
-5. BuildingFurniture, Address
-6. Appearance, SurfaceData
-7. Geometry/ImplicitGeometry/Solid/MultiSurface/MultiCurve/Polygon/LinearRing/Position
+## 2.2 공간관계 v1 구현
 
-## 2.2 속성 파싱 강화
+1. 관계 집합: `INSIDE`, `CONNECTS`, `ADJACENT_TO`, `TOUCHES`, `INTERSECTS`
+2. 우선순위/배타: `INTERSECTS > TOUCHES > ADJACENT_TO`
+3. 대상 쌍:
+   - Furniture <-> BoundarySurface
+   - Furniture <-> Door|Window
+   - Furniture <-> Furniture
+4. 계산 방식: Geometry 좌표 기반 AABB 판정
+5. 공간 edge 메타데이터:
+   - `method`, `distance`
+   - `epsilon_touch`, `epsilon_adjacent`, `epsilon_intersection`
+   - `confidence`, `computed_at`
 
-다음 속성군을 노드 속성으로 반영하도록 확장했다.
+## 2.3 설정/평가/테스트 고도화
 
-1. `gml:name` (`gml_name`, `gml_name_all`)
-2. 공통 메타데이터(`description`, `creationDate`, `relativeToTerrain`)
-3. Building 계열 코드/수치 속성(`class`, `function`, `usage`, `roofType`, `measuredHeight`, `storeys*`)
-4. `gen:*Attribute` 계열(flattened `attr_*`)
+1. epsilon 파라미터를 `configs/default.yaml`의 `spatial.*`로 외부화
+2. scorecard에 공간 전용 지표 추가:
+   - `spatial_coverage`
+   - `spatial_precision_sanity`
+   - `spatial_pair_stats`
+3. 회귀 테스트 강화:
+   - positive
+   - precedence/배타
+   - negative(비접촉/비인접/비교차)
 
-## 2.3 관계 생성 정책 정리
+## 2.4 문서화/실행 도구
 
-핵심 관계 생성 규칙을 정리/보강했다.
+1. 질의 벤치마크 가이드 문서 추가
+2. 기능 구현/검증 가이드 문서 추가
+3. 대용량 성능 프로파일링 가이드 문서 추가
+4. `scripts/benchmark_queries.py`를 실제 벤치마크 실행기로 구현
+5. `scripts/profile_import_runs.py` 추가(반복 import 성능 리포트 생성)
 
-1. 계층 관계: `CONTAINS`, `CONSISTS_OF_BUILDING_PART`, `INTERIOR_ROOM`, `ROOM_INSTALLATION`, `INTERIOR_FURNITURE` 등
-2. 경계/개구부 관계: `BOUNDED_BY`, `HAS_OPENING`
-3. 주소/외부 관계: `HAS_ADDRESS`
-4. Appearance 서브그래프: `HAS_APPEARANCE`, `HAS_SURFACE_DATA`, `APPLIES_TO`
-5. LoD/기하 구조 관계: `HAS_LOD_GEOMETRY`, `HAS_GEOMETRY_COMPONENT`, `HAS_GEOMETRY_MEMBER`, `HAS_GEOMETRY`, `HAS_RING`, `HAS_POS`
+## 3. 부분완료
 
-중복 방지 정책:
+1. 대용량 성능 프로파일링
+   - 실행 스크립트/가이드는 준비 완료
+   - 실제 대용량 데이터셋 기준 결과 리포트 축적은 진행 필요
 
-1. 특화 관계가 존재하는 경우 동일 parent-child에 `CONTAINS`를 중복 생성하지 않도록 정리
-2. 그래프 빌더에서 `(source, relation, target)` 중복 엣지 방지
+2. 문서 최종 동기화
+   - 핵심 문서 대부분 동기화됨
+   - 구현 마무리 시 최종 점검 1회 필요
 
-## 2.4 Appearance owner fallback 보강
+## 4. 미완료
 
-`Appearance`가 semantic ancestor 없이 루트 `appearanceMember`에 위치한 경우에도  
-`HAS_APPEARANCE`가 생성되도록 fallback owner 로직을 추가했다.
+1. 질의 벤치마크 결과 축적
+   - 벤치마크 실행기는 구현 완료
+   - 데이터셋별 결과 비교 리포트(정확성/성능) 누적 필요
 
-추가로 검증 지표를 보강했다.
+2. 튜닝 전후 성능 비교표 작성
+   - `batch_size`, epsilon 조합별 정량 비교표 작성 필요
 
-1. `summary.appearance_coverage` 출력
-2. `owner_resolution`(ancestor/fallback/unresolved) 집계
-3. 터미널 리포트에 Appearance Coverage 섹션 추가
+3. v2 공간관계 확장
+   - 방향 관계(좌/우/상/하/전/후)
+   - 거리 구간 관계(near/far)
+   - 접근성/경로 기반 관계
 
-## 2.5 Neo4j 적재/운영성 개선
+## 5. 다음 우선순위
 
-1. 배치 적재(`UNWIND`) 기반 writer 구조 반영
-2. 노드/엣지 적재 진행률(퍼센트 바) 출력
-3. stage timeline/report 출력 고도화
-4. 제약조건/라벨 정책 정리(`CityObject` + 타입 라벨)
+1. 실데이터 기준 벤치마크 1차 결과 리포트 작성
+2. import profiling 결과(평균/표준편차) 1차 리포트 작성
+3. 문서 최종 동기화(README + docs 전체) 마감
 
-## 2.6 평가/리포트 체계 정리
+## 6. 실행 명령어
 
-1. Scorecard 기준 반영: `overall = 0.40*node + 0.30*relation + 0.30*property`
-2. 공정한 분모 정책(지원 범위 기준 expected 계산) 정리
-3. Building-centric 리포트 확장(객체 분포/속성/기하 밀도/stage 상태)
-4. `docs/evaluation_scorecard.md` 유지
+프로젝트 루트에서 실행:
 
-## 2.7 문서/컨벤션 정리
+```powershell
+cd "C:\Users\OKLab\Desktop\AIDT Lab\City Scene Understanding\3DCitySG"
+conda activate 3DCitySG
+```
 
-1. README를 연구 중심 설명 + 실행 가이드 중심으로 정리
-2. CityGML 2.0 baseline 명시 및 3.0 확장 여지(config/constants) 정리
-3. `INTERSECTS`는 개념상 spatial relation으로 유지하되 현재는 planned(미구현)으로 명시
-4. 미구현 스텁 모듈은 `Planned module stub` 상태로 정리하고 문서화(`docs/module_stubs.md`)
-5. 회귀 테스트 가이드 문서 추가(`docs/regression_testing.md`)
+import:
 
-## 3. 테스트/검증 상태
+```powershell
+python scripts/run_import.py --input "data/input/fzk_haus_lod2_v2.gml" --output data/output/my_import.json --config configs/default.yaml
+```
 
-회귀 테스트 추가 후 실행 결과:
+import + Neo4j:
 
-1. `python -m pytest -q`
-2. 결과: `3 passed`
+```powershell
+python scripts/run_import.py --input "data/input/fzk_haus_lod2_v2.gml" --output data/output/my_import.json --to-neo4j --config configs/default.yaml
+```
 
-회귀 테스트가 검증하는 핵심:
+질의 벤치마크:
 
-1. global appearance fallback 시 `HAS_APPEARANCE` 생성
-2. 특화 관계 존재 시 `CONTAINS` 중복 방지
-3. summary 계약(`scorecard`, `appearance_coverage`) 유지
+```powershell
+python scripts/benchmark_queries.py --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
+```
 
-## 4. 현재 남은 핵심 개발 작업
+성능 프로파일링:
 
-우선순위에서 의도적으로 미룬 항목:
+```powershell
+python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" --runs 3 --config configs/default.yaml
+python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" --runs 3 --to-neo4j --config configs/default.yaml
+```
 
-1. 공간관계 추출 로직 구현 (`ADJACENT_TO`, `TOUCHES`, `INTERSECTS`)
+회귀 테스트:
 
-그 외는 주로 운영/품질 단계:
-
-1. 대용량 실데이터 반복 검증
-2. 커밋 단위 정리 및 릴리즈 노트화
-
-## 5. 관련 문서
-
-1. `README.md`
-2. `docs/evaluation_scorecard.md`
-3. `docs/regression_testing.md`
-4. `docs/module_stubs.md`
-5. `docs/graph_schema.md`
-6. `docs/relation_definitions.md`
+```powershell
+python -m pytest tests/test_spatial_priority.py -q
+python -m pytest tests/test_spatial_relation_pairs.py -q
+python -m pytest tests/test_pipeline_regression.py -q
+```

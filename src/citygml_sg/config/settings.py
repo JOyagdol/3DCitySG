@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 
 from citygml_sg.config import DEFAULT_CITYGML_VERSION, normalize_citygml_version
-from citygml_sg.config.schema import Neo4jConfig, PipelineConfig, ProjectConfig
+from citygml_sg.config.schema import Neo4jConfig, PipelineConfig, ProjectConfig, SpatialRelationConfig
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
@@ -23,6 +23,7 @@ def load_project_config(path: str | Path) -> ProjectConfig:
 
     project_raw = _as_dict(raw.get("project"))
     pipeline_raw = _as_dict(raw.get("pipeline"))
+    spatial_raw = _as_dict(raw.get("spatial"))
     neo4j_raw = _as_dict(raw.get("neo4j"))
 
     citygml_version = normalize_citygml_version(str(project_raw.get("citygml_version", DEFAULT_CITYGML_VERSION)))
@@ -34,6 +35,11 @@ def load_project_config(path: str | Path) -> ProjectConfig:
             input_path=str(pipeline_raw.get("input_path", "data/input")),
             output_path=str(pipeline_raw.get("output_path", "data/output")),
             enable_relations=bool(pipeline_raw.get("enable_relations", True)),
+        ),
+        spatial=SpatialRelationConfig(
+            touch_epsilon=float(spatial_raw.get("touch_epsilon", 0.05)),
+            adjacent_epsilon=float(spatial_raw.get("adjacent_epsilon", 0.50)),
+            intersection_epsilon=float(spatial_raw.get("intersection_epsilon", 1e-6)),
         ),
         neo4j=Neo4jConfig(
             uri=str(neo4j_raw.get("uri", "bolt://localhost:7687")),

@@ -36,7 +36,29 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("relations", help="Extract spatial relations")
     subparsers.add_parser("export", help="Export graph to target storage")
-    subparsers.add_parser("benchmark", help="Run benchmark queries")
+    benchmark_parser = subparsers.add_parser("benchmark", help="Run benchmark queries")
+    benchmark_parser.add_argument(
+        "--config",
+        default="configs/default.yaml",
+        help="Project config path containing neo4j connection info",
+    )
+    benchmark_parser.add_argument(
+        "--output",
+        default="data/output/benchmark_report.json",
+        help="Benchmark report JSON path",
+    )
+    benchmark_parser.add_argument(
+        "--warmup",
+        type=int,
+        default=1,
+        help="Warmup run count for each query",
+    )
+    benchmark_parser.add_argument(
+        "--repeat",
+        type=int,
+        default=3,
+        help="Measured repeat run count for each query",
+    )
     return parser
 
 
@@ -56,7 +78,12 @@ def main() -> int:
     if args.command == "export":
         return run_export_pipeline()
     if args.command == "benchmark":
-        return run_benchmark_pipeline()
+        return run_benchmark_pipeline(
+            config_path=args.config,
+            output_path=args.output,
+            warmup_runs=args.warmup,
+            repeat_runs=args.repeat,
+        )
 
     parser.error("Unknown command")
     return 2

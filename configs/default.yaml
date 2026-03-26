@@ -8,6 +8,12 @@ pipeline:
   output_path: data/output
   enable_relations: true
 
+spatial:
+  # AABB-based spatial inference thresholds.
+  touch_epsilon: 0.05
+  adjacent_epsilon: 0.50
+  intersection_epsilon: 0.000001
+
 neo4j:
   uri: bolt://localhost:7687
   username: neo4j

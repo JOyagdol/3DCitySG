@@ -22,10 +22,18 @@ class PipelineConfig:
 
 
 @dataclass(slots=True)
+class SpatialRelationConfig:
+    touch_epsilon: float = 0.05
+    adjacent_epsilon: float = 0.50
+    intersection_epsilon: float = 1e-6
+
+
+@dataclass(slots=True)
 class ProjectConfig:
     name: str = "citygml-scene-graph"
     citygml_version: str = "2.0"
     pipeline: PipelineConfig = field(default_factory=PipelineConfig)
+    spatial: SpatialRelationConfig = field(default_factory=SpatialRelationConfig)
     neo4j: Neo4jConfig = field(
         default_factory=lambda: Neo4jConfig(
             uri="bolt://localhost:7687",

@@ -25,6 +25,11 @@ This document defines the current import scorecard policy used in `src/citygml_s
 - Relation coverage (30%)
 - Property coverage (30%)
 
+Note:
+
+- Spatial-specific metrics are reported as additional diagnostics.
+- They are currently **not** included in the weighted `overall` score.
+
 ## Fair Denominator Policy
 
 Expected totals must be computed from **supported extraction channels only**.
@@ -63,11 +68,43 @@ Expected totals must be computed from **supported extraction channels only**.
 - Expected properties are counted only when direct child tags actually exist on supported semantic elements.
 - Generic attributes are counted from `gen:*Attribute` entries that are currently parsed into `attr_*` fields.
 
+## Spatial Diagnostic Metrics (v1)
+
+Scorecard also reports three spatial diagnostics:
+
+1. `spatial_coverage`
+- Meaning: hit-rate over directed candidate pairs in current v1 spatial scope.
+- Scope pairs:
+  - `Furniture <-> BoundarySurface`
+  - `Furniture <-> Door|Window` (opening subtype)
+  - `Furniture <-> Furniture`
+- `expected_total`: number of directed candidate pairs with bbox available in room-scoped candidate sets.
+- `actual_total`: number of inferred spatial edges (`ADJACENT_TO`, `TOUCHES`, `INTERSECTS`) generated from those pairs.
+- `score`: `min(actual_total / expected_total, 1.0) * 100`
+
+2. `spatial_precision_sanity`
+- Meaning: no-GT quality sanity score for inferred spatial edges.
+- It is the average of:
+  - metadata validity ratio (required keys/types/range)
+  - schema validity ratio (triple allowed by schema)
+  - precedence consistency ratio (one strongest relation per directed pair)
+- `pair_conflict_count` indicates directed pairs that still contain more than one inferred relation (should be zero after normalization).
+
+3. `spatial_pair_stats`
+- Meaning: pair-family breakdown.
+- Per family, reports:
+  - `candidate_pairs`
+  - `inferred_total`
+  - `relation_counts` (`ADJACENT_TO`, `TOUCHES`, `INTERSECTS`)
+
 ## Interpretation
 
 - High node score with low relation score usually means hierarchy links are partially missing or schema constraints block links.
 - High node/relation with low property score usually means extracted objects exist but metadata fields are not yet fully mapped.
 - Compare score trends between commits, not only one absolute number.
+- Spatial diagnostics should be read together:
+  - low `spatial_coverage` can mean sparse layout or strict thresholds
+  - low `spatial_precision_sanity` indicates metadata/schema/precedence consistency issues
 
 ## Update Rule
 
