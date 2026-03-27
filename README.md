@@ -296,14 +296,16 @@ pytest tests/test_spatial_relation_pairs.py
 
 ---
 
-## Development Summary (Korean)
+## Development Docs
 
-- Korean development summary: `docs/development_summary_ko.md`
-- Korean query benchmark guide: `docs/query_benchmark_guide_ko.md`
-- Korean feature implementation guide: `docs/feature_implementation_guide_ko.md`
-- Korean performance profiling guide: `docs/performance_profiling_guide_ko.md`
-- v1 measurement runbook (Korean): `docs/v1_measurement_runbook_ko.md`
-- experiment result record template (Korean): `docs/experiment_results_ko.md`
+- Development summary: `docs/development_summary.md`
+- Query benchmark guide: `docs/query_benchmark_guide.md`
+- Feature implementation guide: `docs/feature_implementation_guide.md`
+- Performance profiling guide: `docs/performance_profiling_guide.md`
+- v1 measurement runbook: `docs/v1_measurement_runbook.md`
+- Experiment result record template: `docs/experiment_results.md`
+
+Note: local Korean copies follow the `_ko.md` suffix and are ignored by Git.
 
 ---
 

@@ -71,3 +71,7 @@ data/input/(210812)E-TYPE_201dong-IFC4.gml
 # Neo4j export artifacts
 *.dump
 *.cypher
+
+# Localized docs (Korean) - keep local only
+docs/*_ko.md
+docs/ko/
