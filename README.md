@@ -75,6 +75,7 @@ Targets relation enrichment for:
 - `INTERIOR_BUILDING_INSTALLATION`
 - `ROOM_INSTALLATION`
 - `BOUNDED_BY`
+- `HAS_SURFACE_TYPE`
 - `HAS_OPENING`
 - `HAS_APPEARANCE`
 - `HAS_SURFACE_DATA`
@@ -220,6 +221,12 @@ python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" 
 
 ```bash
 python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" --runs 3 --to-neo4j --config configs/default.yaml
+```
+
+### Validate large-scale baseline (201dong)
+
+```bash
+python scripts/check_large_scale_baseline.py --baseline configs/baselines/201dong_v1_baseline.json --import-summary data/output/E-TYPE_201dong_after_boundarytype.json --profile-report data/output/import_profile_report_201dong_after_boundarytype.json
 ```
 
 Generated output:
@@ -390,6 +397,7 @@ src/citygml_sg/
   - `INTERIOR_BUILDING_INSTALLATION` (Building/BuildingPart->IntBuildingInstallation)
   - `ROOM_INSTALLATION` (Room->IntBuildingInstallation)
   - `BOUNDED_BY` (Building/BuildingPart/Room/Installation->BoundarySurface)
+  - `HAS_SURFACE_TYPE` (BoundarySurface->BoundarySurfaceType)
   - `HAS_OPENING` (BoundarySurface->Opening)
   - `HAS_APPEARANCE` / `HAS_SURFACE_DATA` / `APPLIES_TO` (Appearance subgraph)
   - `CONNECTS` (Opening->Room)

@@ -65,6 +65,7 @@ ALLOWED_RELATIONS: set[tuple[NodeType, RelationType, NodeType]] = {
     (NodeType.ROOM, RelationType.BOUNDED_BY, NodeType.BOUNDARY_SURFACE),
     (NodeType.BUILDING_INSTALLATION, RelationType.BOUNDED_BY, NodeType.BOUNDARY_SURFACE),
     (NodeType.INT_BUILDING_INSTALLATION, RelationType.BOUNDED_BY, NodeType.BOUNDARY_SURFACE),
+    (NodeType.BOUNDARY_SURFACE, RelationType.HAS_SURFACE_TYPE, NodeType.BOUNDARY_SURFACE_TYPE),
     (NodeType.BOUNDARY_SURFACE, RelationType.HAS_OPENING, NodeType.OPENING),
     (NodeType.OPENING, RelationType.CONNECTS, NodeType.ROOM),
     (NodeType.BUILDING_FURNITURE, RelationType.ADJACENT_TO, NodeType.BOUNDARY_SURFACE),

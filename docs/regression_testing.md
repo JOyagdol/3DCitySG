@@ -24,6 +24,7 @@ Current baseline tests cover:
 5. spatial pair generation for `Furniture-Door/Window`, `Furniture-BoundarySurface`, and `Furniture-Furniture` (`ADJACENT_TO`, `TOUCHES`)
 6. bidirectional materialization checks for inferred spatial relations
 7. negative checks for non-contact/non-adjacent/non-intersecting pairs
+8. boundary surface subtype preservation checks (`BoundarySurfaceType` node + `HAS_SURFACE_TYPE` relation)
 
 Test file:
 

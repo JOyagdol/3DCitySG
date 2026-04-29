@@ -53,6 +53,7 @@ Expected totals must be computed from **supported extraction channels only**.
   - `ROOM_INSTALLATION`
   - `INSIDE`
   - `BOUNDED_BY`
+  - `HAS_SURFACE_TYPE`
   - `HAS_OPENING`
   - `HAS_ADDRESS`
   - `HAS_LOD_GEOMETRY`

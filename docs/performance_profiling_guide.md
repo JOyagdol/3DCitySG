@@ -86,3 +86,14 @@ For each metric:
 3. Improvement summary table (%)
 4. Accuracy impact check (relation counts and scorecard)
 
+## 8. Large-Scale Baseline Check (201dong)
+
+Use the fixed baseline file to perform pass/fail checks on import + profiling outputs:
+
+```bash
+python scripts/check_large_scale_baseline.py --baseline configs/baselines/201dong_v1_baseline.json --import-summary data/output/E-TYPE_201dong_after_boundarytype.json --profile-report data/output/import_profile_report_201dong_after_boundarytype.json
+```
+
+Baseline source:
+
+1. `configs/baselines/201dong_v1_baseline.json`

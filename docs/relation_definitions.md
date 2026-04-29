@@ -16,17 +16,18 @@ Reference:
 8. `HAS_CITY_OBJECT`: `cityObjectMember -> CityObject`
 9. `HAS_GROUP_MEMBER`: `CityObjectGroup -> groupMember CityObject`
 10. `BOUNDED_BY`: object to `BoundarySurface`
-11. `HAS_OPENING`: `BoundarySurface -> Opening`
-12. `HAS_ADDRESS`: `Building|BuildingPart -> Address`
-13. `HAS_APPEARANCE`: semantic object to `Appearance`
-14. `HAS_SURFACE_DATA`: `Appearance -> SurfaceData`
-15. `APPLIES_TO`: `SurfaceData -> geometry/surface node`
-16. `HAS_LOD_GEOMETRY`: object to `Geometry|ImplicitGeometry`
-17. `HAS_GEOMETRY_COMPONENT`: `Geometry -> Solid|MultiSurface|MultiCurve`
-18. `HAS_GEOMETRY_MEMBER`: `Solid|MultiSurface -> Polygon`
-19. `HAS_GEOMETRY`: object to `Polygon`
-20. `HAS_RING`: `Polygon -> LinearRing`
-21. `HAS_POS`: `LinearRing -> Position`
+11. `HAS_SURFACE_TYPE`: `BoundarySurface -> BoundarySurfaceType` (keeps original subtype such as `WallSurface`)
+12. `HAS_OPENING`: `BoundarySurface -> Opening`
+13. `HAS_ADDRESS`: `Building|BuildingPart -> Address`
+14. `HAS_APPEARANCE`: semantic object to `Appearance`
+15. `HAS_SURFACE_DATA`: `Appearance -> SurfaceData`
+16. `APPLIES_TO`: `SurfaceData -> geometry/surface node`
+17. `HAS_LOD_GEOMETRY`: object to `Geometry|ImplicitGeometry`
+18. `HAS_GEOMETRY_COMPONENT`: `Geometry -> Solid|MultiSurface|MultiCurve`
+19. `HAS_GEOMETRY_MEMBER`: `Solid|MultiSurface -> Polygon`
+20. `HAS_GEOMETRY`: object to `Polygon`
+21. `HAS_RING`: `Polygon -> LinearRing`
+22. `HAS_POS`: `LinearRing -> Position`
 
 ## Spatial Relations
 

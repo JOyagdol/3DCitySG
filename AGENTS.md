@@ -60,7 +60,7 @@ This is specifically a **CityGML indoor/outdoor semantic-spatial graph construct
   - `INSIDE`
   - `ADJACENT_TO`
   - `TOUCHES`
-  - `INTERSECTS` (planned; extraction not enabled in current pipeline)
+  - `INTERSECTS`
   - `CONNECTS`
 - Persist enriched graphs to Neo4j
 

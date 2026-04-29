@@ -59,6 +59,7 @@ BOUNDARY_SURFACE_TAGS = {
 }
 OPENING_TAGS = {"Door", "Window"}
 SPATIAL_OPENING_TYPES = {"Door", "Window"}
+BOUNDARY_SURFACE_TYPE_NODE_PREFIX = "boundary_surface_type::"
 APPEARANCE_FALLBACK_OWNER_PRIORITY: tuple[NodeType, ...] = (
     NodeType.CITY_OBJECT_MEMBER,
     NodeType.CITY_OBJECT_GROUP,
@@ -120,6 +121,7 @@ SEMANTIC_RELATIONS: set[RelationType] = {
     RelationType.ROOM_INSTALLATION,
     RelationType.INTERIOR_FURNITURE,
     RelationType.BOUNDED_BY,
+    RelationType.HAS_SURFACE_TYPE,
     RelationType.HAS_OPENING,
     RelationType.HAS_ADDRESS,
     RelationType.HAS_APPEARANCE,
@@ -257,6 +259,44 @@ def _clean_properties(properties: dict) -> dict:
             continue
         cleaned[key] = _coerce_property_value(value)
     return cleaned
+
+
+def _normalize_boundary_surface_type(value: object) -> str:
+    surface_type = str(value or "").strip()
+    if surface_type:
+        return surface_type
+    return "BoundarySurface"
+
+
+def _boundary_surface_type_node_id(surface_type: str) -> str:
+    return f"{BOUNDARY_SURFACE_TYPE_NODE_PREFIX}{surface_type}"
+
+
+def _build_boundary_surface_type_nodes(graph: SceneGraph, records: list[ElementRecord]) -> int:
+    added = 0
+    surface_types = sorted(
+        {
+            _normalize_boundary_surface_type(record.properties.get("surface_type"))
+            for record in records
+            if record.node_type == NodeType.BOUNDARY_SURFACE
+        }
+    )
+    for surface_type in surface_types:
+        node_id = _boundary_surface_type_node_id(surface_type)
+        if node_id in graph.nodes:
+            continue
+        graph.add_node(
+            create_node(
+                node_id,
+                NodeType.BOUNDARY_SURFACE_TYPE,
+                name=surface_type,
+                surface_type=surface_type,
+                object_type="BoundarySurfaceType",
+                source_tag="BoundarySurfaceType",
+            )
+        )
+        added += 1
+    return added
 
 
 def _collect_records(root: Element) -> tuple[list[ElementRecord], dict[Element, ElementRecord]]:
@@ -944,6 +984,23 @@ def _build_semantic_edges(
             )
             if parent:
                 _add_edge_if_valid(graph, create_edge(parent.node_id, record.node_id, RelationType.BOUNDED_BY))
+            surface_type = _normalize_boundary_surface_type(record.properties.get("surface_type"))
+            surface_type_node_id = _boundary_surface_type_node_id(surface_type)
+            if surface_type_node_id not in graph.nodes:
+                graph.add_node(
+                    create_node(
+                        surface_type_node_id,
+                        NodeType.BOUNDARY_SURFACE_TYPE,
+                        name=surface_type,
+                        surface_type=surface_type,
+                        object_type="BoundarySurfaceType",
+                        source_tag="BoundarySurfaceType",
+                    )
+                )
+            _add_edge_if_valid(
+                graph,
+                create_edge(record.node_id, surface_type_node_id, RelationType.HAS_SURFACE_TYPE),
+            )
 
         elif record.node_type == NodeType.OPENING:
             boundary = _nearest_ancestor(record.element, parent_map, by_element, {NodeType.BOUNDARY_SURFACE})
@@ -1609,6 +1666,7 @@ def _build_scorecard(graph: SceneGraph, root: Element) -> dict:
         )
         is not None
     )
+    expected_has_surface_type = len(source_boundary_elements)
     expected_has_opening = sum(
         1
         for opening in source_opening_elements
@@ -1769,6 +1827,7 @@ def _build_scorecard(graph: SceneGraph, root: Element) -> dict:
         RelationType.INTERIOR_FURNITURE: expected_interior_furniture,
         RelationType.INSIDE: expected_inside,
         RelationType.BOUNDED_BY: expected_bounded_by,
+        RelationType.HAS_SURFACE_TYPE: expected_has_surface_type,
         RelationType.HAS_OPENING: expected_has_opening,
         RelationType.HAS_ADDRESS: expected_has_address,
         RelationType.HAS_LOD_GEOMETRY: expected_has_lod_geometry,
@@ -2086,7 +2145,7 @@ def _emit_conversion_report(
         (
             "CityObjectMember=%d CityObjectGroup=%d "
             "Building=%d BuildingPart=%d Room=%d BuildingInstallation=%d IntBuildingInstallation=%d "
-            "BoundarySurface=%d Opening=%d BuildingFurniture=%d Address=%d Appearance=%d SurfaceData=%d "
+            "BoundarySurface=%d BoundarySurfaceType=%d Opening=%d BuildingFurniture=%d Address=%d Appearance=%d SurfaceData=%d "
             "Geometry=%d ImplicitGeometry=%d Solid=%d MultiSurface=%d MultiCurve=%d Polygon=%d LinearRing=%d Position=%d"
         )
         % (
@@ -2098,6 +2157,7 @@ def _emit_conversion_report(
             node_counts[NodeType.BUILDING_INSTALLATION],
             node_counts[NodeType.INT_BUILDING_INSTALLATION],
             node_counts[NodeType.BOUNDARY_SURFACE],
+            node_counts[NodeType.BOUNDARY_SURFACE_TYPE],
             node_counts[NodeType.OPENING],
             node_counts[NodeType.BUILDING_FURNITURE],
             node_counts[NodeType.ADDRESS],
@@ -2421,8 +2481,13 @@ def run_import_pipeline(
     t0 = perf_counter()
     for record in records:
         graph.add_node(create_node(record.node_id, record.node_type, **record.properties))
+    boundary_surface_type_nodes = _build_boundary_surface_type_nodes(graph, records)
     t_build_nodes = perf_counter() - t0
-    _stage_done("build_nodes", t_build_nodes, detail=f"nodes={len(graph.nodes)}")
+    _stage_done(
+        "build_nodes",
+        t_build_nodes,
+        detail=f"nodes={len(graph.nodes)}, boundary_surface_types={boundary_surface_type_nodes}",
+    )
 
     t_build_semantic_edges = 0.0
     t_build_geometry = 0.0

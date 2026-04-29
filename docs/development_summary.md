@@ -21,6 +21,9 @@ Baseline date: 2026-03-26
 1. Core object families are parsed as nodes with hierarchical relations.
 2. Geometry subgraph links are generated for Polygon, LinearRing, and Position.
 3. Appearance/SurfaceData owner fallback linking is implemented.
+4. Boundary surface subtype preservation is implemented:
+   - `BoundarySurface -> HAS_SURFACE_TYPE -> BoundarySurfaceType`
+   - original subtype (for example `WallSurface`, `FloorSurface`) is preserved in graph-level semantics.
 
 ### 2.2 Spatial Relations (v1)
 
@@ -55,6 +58,7 @@ Baseline date: 2026-03-26
 3. Large-scale profiling guide added.
 4. `scripts/benchmark_queries.py` implemented as a runnable benchmark tool.
 5. `scripts/profile_import_runs.py` added for repeated import profiling.
+6. `scripts/check_large_scale_baseline.py` and `configs/baselines/201dong_v1_baseline.json` added for pass/fail baseline validation.
 
 ## 3. Partially Completed
 
@@ -79,4 +83,3 @@ Baseline date: 2026-03-26
 1. Publish first benchmark report on real datasets.
 2. Publish first import profiling report (mean/std-based).
 3. Finalize documentation sync across README and `docs/*`.
-

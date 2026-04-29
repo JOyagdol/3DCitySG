@@ -1,0 +1,67 @@
+{
+  "name": "201dong_v1_baseline_2026-04-29",
+  "citygml_version": "2.0",
+  "import_summary": {
+    "node_count": {
+      "min": 1076000,
+      "max": 1076500
+    },
+    "edge_count": {
+      "min": 1240000,
+      "max": 1240800
+    },
+    "scorecard": {
+      "overall_min": 97.5,
+      "node_coverage_min": 99.9,
+      "relation_coverage_min": 95.0,
+      "property_coverage_min": 96.0,
+      "spatial_coverage_min": 50.0,
+      "spatial_precision_sanity_min": 99.0
+    },
+    "node_type_counts": {
+      "Building": 1,
+      "BuildingPart": 6,
+      "Room": 11,
+      "BoundarySurface": 190,
+      "BoundarySurfaceType": 5,
+      "Opening": 24,
+      "BuildingFurniture": 6
+    },
+    "relation_counts": {
+      "BOUNDED_BY": 190,
+      "HAS_SURFACE_TYPE": 190,
+      "HAS_OPENING": 24,
+      "INSIDE": 6,
+      "INTERIOR_FURNITURE": 6
+    }
+  },
+  "profile_report": {
+    "runs_requested": 3,
+    "runs_success_min": 3,
+    "wall_time_seconds": {
+      "avg_max": 150.0,
+      "std_max": 5.0
+    },
+    "stage_duration_seconds": {
+      "parse_xml": {
+        "avg_max": 7.0
+      },
+      "collect_semantics": {
+        "avg_max": 2.0
+      },
+      "build_semantic_edges": {
+        "avg_max": 1.0
+      },
+      "build_geometry": {
+        "avg_max": 26.0
+      },
+      "export_json": {
+        "avg_max": 60.0
+      },
+      "total": {
+        "avg_max": 95.0,
+        "std_max": 5.0
+      }
+    }
+  }
+}

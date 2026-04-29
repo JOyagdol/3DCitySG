@@ -93,3 +93,22 @@ def test_summary_keeps_scorecard_and_appearance_coverage(tmp_path: Path) -> None
     assert "spatial_pair_stats" in summary["scorecard"]
     assert "appearance_coverage" in summary
     assert summary["appearance_coverage"]["appearance_node_count"] == 1
+
+
+def test_boundary_surface_keeps_subtype_node(tmp_path: Path) -> None:
+    payload = _run_pipeline(MINIMAL_GML_WITH_GLOBAL_APPEARANCE, tmp_path)
+    edge_set = {(edge["source_id"], edge["relation"], edge["target_id"]) for edge in payload["edges"]}
+
+    boundary_nodes = [node for node in payload["nodes"] if node["type"] == "BoundarySurface"]
+    assert boundary_nodes
+    boundary_id = boundary_nodes[0]["id"]
+
+    subtype_nodes = [node for node in payload["nodes"] if node["type"] == "BoundarySurfaceType"]
+    assert any(node["properties"].get("surface_type") == "WallSurface" for node in subtype_nodes)
+
+    wall_type_ids = {
+        node["id"]
+        for node in subtype_nodes
+        if node["properties"].get("surface_type") == "WallSurface"
+    }
+    assert any((boundary_id, "HAS_SURFACE_TYPE", type_id) in edge_set for type_id in wall_type_ids)

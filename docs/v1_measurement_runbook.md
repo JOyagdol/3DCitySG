@@ -66,38 +66,37 @@ python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" 
 3. `summary.runs_failed = 0` in profiling report
 4. Recorded metrics are copied into `docs/experiment_results.md`
 
-## 6. Fixed Baseline Example (2026-03-26, E-TYPE_201dong)
+## 6. Fixed Baseline Example (2026-04-29, E-TYPE_201dong)
 
 Use these values as a stable comparison reference.
 
 ### 6.1 Executed Commands
 
 ```powershell
-python -m pytest -q
-python -m pytest tests/test_spatial_relation_pairs.py -q
-python scripts/run_import.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --output data/output/E-TYPE_201dong.json --to-neo4j --config configs/default.yaml
-python scripts/benchmark_queries.py --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
-python scripts/profile_import_runs.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --runs 3 --config configs/default.yaml
+python scripts/run_import.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --output data/output/E-TYPE_201dong_after_boundarytype.json --config configs/default.yaml
+python scripts/profile_import_runs.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --runs 3 --config configs/default.yaml --output-dir data/output/profiling_201dong_after_boundarytype --report data/output/import_profile_report_201dong_after_boundarytype.json
+python scripts/check_large_scale_baseline.py --baseline configs/baselines/201dong_v1_baseline.json --import-summary data/output/E-TYPE_201dong_after_boundarytype.json --profile-report data/output/import_profile_report_201dong_after_boundarytype.json
 ```
 
 ### 6.2 Snapshot Results
 
-1. Tests:
-   - `python -m pytest -q` -> `13 passed`
-   - `python -m pytest tests/test_spatial_relation_pairs.py -q` -> `6 passed`
-2. Import (`--to-neo4j`):
-   - nodes=`1,076,195`, edges=`1,240,071`
-   - scorecard overall=`97.97`
+1. Import (`--to-neo4j` disabled):
+   - nodes=`1,076,200`, edges=`1,240,261`
+   - BoundarySurfaceType nodes=`5`
+   - HAS_SURFACE_TYPE edges=`190`
+   - scorecard overall=`98.04`
    - spatial coverage=`57.14 (8/14)`
    - spatial precision-like sanity=`100.00`
-   - total runtime=`306.559s`
-3. Benchmark:
-   - Q1 avg=`10.629ms`, Q2 avg=`5.744ms`, Q3 avg=`5.441ms`, Q4 avg=`7.424ms`, Q5 avg=`5.775ms`
-   - all result counts were `0`
-   - Neo4j warnings reported missing `CONNECTS` relation type (Q4/Q5)
-4. Profiling (`--to-neo4j` disabled):
-   - wall time avg=`153.028553s` (min=`149.791812s`, max=`156.003975s`, std=`2.542828s`)
-   - stage avg: `parse_xml=5.753844s`, `collect_semantics=1.135243s`,
-     `build_nodes=0.007367s`, `build_semantic_edges=0.455520s`,
-     `build_geometry=23.289802s`, `export_json=53.351159s`, `total=96.247233s`
-
+   - total runtime=`85.629s` (single run)
+2. Profiling (`--to-neo4j` disabled, 3 runs):
+   - wall time avg=`134.699091s` (min=`132.979980s`, max=`136.587765s`, std=`1.477744s`)
+   - stage avg:
+     - `parse_xml=4.550062s`
+     - `collect_semantics=1.001046s`
+     - `build_nodes=0.006266s`
+     - `build_semantic_edges=0.372700s`
+     - `build_geometry=20.811885s`
+     - `export_json=47.413900s`
+     - `total=84.934705s`
+3. Baseline verdict:
+   - `scripts/check_large_scale_baseline.py` -> `PASS`
