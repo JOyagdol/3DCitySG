@@ -82,9 +82,15 @@ python -m citygml_sg.app.cli benchmark --config configs/default.yaml --output da
 | H4 | Opening-room connectivity | `MATCH (:Opening)-[:CONNECTS]->(:Room)` | 0 | 0.0 | 0.0 | 0 can be valid per dataset |
 | S5 | Room-to-room pairs (path-like) | `Room <-INTERIOR_ROOM- BuildingPart -INTERIOR_ROOM-> Room` | 0 | 0.0 | 0.0 | human-style navigation proxy |
 
-Output file:
+Output files:
 
-- `data/output/benchmark_report.json`
+1. Latest default benchmark file:
+   - `data/output/benchmark_report.json`
+2. Dataset-tagged benchmark file (from `refresh_latest_reports.py`):
+   - `data/output/<dataset_tag>__benchmark_report_YYYYMMDD_HHMMSS.json`
+3. Note:
+   - `benchmark_report.json` is overwritten by the latest promoted run.
+   - Use dataset-tagged files for stable reproducible references.
 
 JSON fields:
 
@@ -113,3 +119,22 @@ JSON fields:
 2. Query result summary table
 3. Sample IDs for representative results
 4. Before/after tuning notes
+
+## 7. Latest Snapshot (`benchmark_report.json`)
+
+Source:
+1. `data/output/benchmark_report.json`
+2. Dataset file: `data/output/snowdon_towers_ifc4__benchmark_report_20260507_104353.json`
+
+Summary:
+1. `query_total=17`, `query_success=17`, `query_failed=0`
+2. `avg_query_time_ms=5.128`
+3. Tier nonzero:
+   - `B=6/7`
+   - `H=4/5`
+   - `S=4/5`
+
+Selected query counts:
+1. `B1 baseline__all_nodes = 16,960,567`
+2. `H4 hard__opening_room_connects = 1,179`
+3. `S5 scenario__room_to_room_pairs_via_same_buildingpart = 1,474`
