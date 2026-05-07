@@ -13,8 +13,8 @@ Reference:
 5. `INTERIOR_BUILDING_INSTALLATION`: `Building|BuildingPart -> IntBuildingInstallation`
 6. `ROOM_INSTALLATION`: `Room -> IntBuildingInstallation`
 7. `INTERIOR_FURNITURE`: `Room -> BuildingFurniture`
-8. `HAS_CITY_OBJECT`: `cityObjectMember -> CityObject`
-9. `HAS_GROUP_MEMBER`: `CityObjectGroup -> groupMember CityObject`
+8. `HAS_CITY_OBJECT`: `CityObjectMember -> parsed top-level object` (for example `Building`, `CityObjectGroup`)
+9. `HAS_GROUP_MEMBER`: `CityObjectGroup -> grouped semantic object`
 10. `BOUNDED_BY`: object to `BoundarySurface`
 11. `HAS_SURFACE_TYPE`: `BoundarySurface -> BoundarySurfaceType` (keeps original subtype such as `WallSurface`)
 12. `HAS_OPENING`: `BoundarySurface -> Opening`
@@ -32,7 +32,9 @@ Reference:
 ## Spatial Relations
 
 1. `INSIDE`: `BuildingFurniture -> Room` (existing semantic-spatial rule)
-2. `CONNECTS`: `Opening -> Room` (existing semantic-spatial rule)
+2. `CONNECTS`: `Opening -> Room`
+   - primary: room ancestry detected for opening
+   - fallback: hierarchy + bbox-assisted augmentation when direct room ancestry is absent
 3. `INTERSECTS`: AABB overlap on all axes above intersection epsilon
 4. `TOUCHES`: non-intersecting and minimum distance within touch epsilon
 5. `ADJACENT_TO`: non-intersecting and within adjacency threshold

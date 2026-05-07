@@ -11,5 +11,5 @@ class Neo4jReader:
 
     def fetch_node_count(self) -> int:
         with self._client.session() as session:
-            result = session.run("MATCH (n:CityObject) RETURN count(n) AS c")
+            result = session.run("MATCH (n) RETURN count(n) AS c")
             return int(result.single()["c"])

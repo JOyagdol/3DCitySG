@@ -175,6 +175,8 @@ These values control `TOUCHES`/`ADJACENT_TO`/`INTERSECTS` decisions in import-ti
 
 ## How To Run
 
+Command source of truth: `docs/command_cheatsheet.md`
+
 ### Run with sample CityGML
 
 ```bash
@@ -209,6 +211,12 @@ python -m citygml_sg.app.cli import --input "data/input/fzk_haus_lod2_v2.gml" --
 python scripts/benchmark_queries.py --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
 ```
 
+Built-in benchmark set now includes:
+
+- baseline tier (`B1..B7`): stable structural counts
+- hard tier (`H1..H5`): sparse/high-selectivity spatial checks
+- scenario tier (`S1..S5`): human-style query patterns (including room-to-room path-like query)
+
 ```bash
 python -m citygml_sg.app.cli benchmark --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
 ```
@@ -227,6 +235,43 @@ python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" 
 
 ```bash
 python scripts/check_large_scale_baseline.py --baseline configs/baselines/201dong_v1_baseline.json --import-summary data/output/E-TYPE_201dong_after_boundarytype.json --profile-report data/output/import_profile_report_201dong_after_boundarytype.json
+```
+
+### Refresh latest reports in one command
+
+```bash
+python scripts/refresh_latest_reports.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --config configs/default.yaml
+```
+
+Timestamped outputs are saved with input-derived dataset tag, for example:
+
+- `data/output/e_type_201dong_ifc4__import_summary_YYYYMMDD_HHMMSS.json`
+- `data/output/e_type_201dong_ifc4__benchmark_report_YYYYMMDD_HHMMSS.json`
+- `data/output/e_type_201dong_ifc4__import_profile_report_YYYYMMDD_HHMMSS.json`
+- `data/output/e_type_201dong_ifc4__profiling_YYYYMMDD_HHMMSS/`
+
+Force Neo4j sync before benchmark:
+
+```bash
+python scripts/refresh_latest_reports.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --config configs/default.yaml --to-neo4j
+```
+
+Optional skips:
+
+```bash
+python scripts/refresh_latest_reports.py --skip-profile --skip-baseline
+```
+
+Keep timestamped files only (do not overwrite defaults):
+
+```bash
+python scripts/refresh_latest_reports.py --no-promote-defaults
+```
+
+Override dataset tag manually:
+
+```bash
+python scripts/refresh_latest_reports.py --input "<input.gml>" --dataset-tag "building_a"
 ```
 
 Generated output:
@@ -266,6 +311,7 @@ When `--to-neo4j` is enabled, both node and edge export progress are printed as 
   - `spatial_coverage`
   - `spatial_precision_sanity`
   - `spatial_pair_stats`
+  - `spatial_pair_family_scores`
 - Detailed criteria and interpretation guide: `docs/evaluation_scorecard.md`
 
 ---
@@ -308,9 +354,16 @@ pytest tests/test_spatial_relation_pairs.py
 - Development summary: `docs/development_summary.md`
 - Query benchmark guide: `docs/query_benchmark_guide.md`
 - Feature implementation guide: `docs/feature_implementation_guide.md`
+- Testing and scoring guide: `docs/testing_and_scoring_guide.md`
 - Performance profiling guide: `docs/performance_profiling_guide.md`
 - v1 measurement runbook: `docs/v1_measurement_runbook.md`
+- Command cheatsheet: `docs/command_cheatsheet.md`
+- Command cheatsheet (Korean): `docs/command_cheatsheet_ko.md`
+- Reading summary (Korean): `docs/reading_summary_ko.md`
 - Experiment result record template: `docs/experiment_results.md`
+- Experiment result history (archive): `docs/experiment_results_history.md`
+- Dataset comparison tracker: `docs/dataset_result_comparison.md`
+- Dataset comparison history (archive): `docs/dataset_result_history.md`
 
 Note: local Korean copies follow the `_ko.md` suffix and are ignored by Git.
 

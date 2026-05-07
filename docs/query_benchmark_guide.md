@@ -2,6 +2,10 @@
 
 Baseline: CityGML 2.0 / spatial relations v1 (`INSIDE`, `CONNECTS`, `ADJACENT_TO`, `TOUCHES`, `INTERSECTS`)
 
+Command source of truth:
+
+1. `docs/command_cheatsheet.md`
+
 ## 1. Goal
 
 1. Validate whether the graph supports interpretable spatial querying.
@@ -10,30 +14,43 @@ Baseline: CityGML 2.0 / spatial relations v1 (`INSIDE`, `CONNECTS`, `ADJACENT_TO
 
 ## 2. Recommended Query Set
 
-### 2.1 Intersection
+The built-in benchmark query set is split into three tiers.
 
-1. Furniture-furniture `INTERSECTS` pairs
-2. Furniture-door/window `INTERSECTS` pairs
+### 2.1 Baseline Tier (`B*`)
 
-### 2.2 Touch
+Purpose: always produce interpretable counts for loaded graphs.
 
-1. Furniture-boundary `TOUCHES`
-2. Furniture-door/window `TOUCHES`
+1. `B1 baseline__all_nodes`
+2. `B2 baseline__buildings`
+3. `B3 baseline__rooms`
+4. `B4 baseline__openings`
+5. `B5 baseline__furniture_inside_room_links`
+6. `B6 baseline__room_boundary_links`
+7. `B7 baseline__boundary_opening_links`
 
-### 2.3 Adjacency
+### 2.2 Hard Tier (`H*`)
 
-1. Furniture-furniture `ADJACENT_TO`
-2. Furniture-boundary `ADJACENT_TO`
+Purpose: track sparse/high-selectivity spatial patterns.
 
-### 2.4 Connectivity
+1. `H1 hard__furniture_furniture_spatial_any`
+2. `H2 hard__furniture_opening_spatial_any`
+3. `H3 hard__furniture_boundary_spatial_any`
+4. `H4 hard__opening_room_connects`
+5. `H5 hard__room_internal_furniture_touching_opening`
 
-1. Openings connected to a room via `CONNECTS`
-2. Door/window connectivity distribution
+Hard-tier zero counts are valid and informative when candidate pairs are absent in source data.
 
-### 2.5 Composite
+### 2.3 Scenario Tier (`S*`)
 
-1. Furniture `INSIDE` a room and `TOUCHES` an opening
-2. Top-N furniture by adjacency count inside a room
+Purpose: emulate user-facing question patterns.
+
+1. `S1 scenario__rooms_with_furniture`
+2. `S2 scenario__rooms_with_installations`
+3. `S3 scenario__door_opening_count`
+4. `S4 scenario__rooms_with_internal_furniture_spatial_pairs`
+5. `S5 scenario__room_to_room_pairs_via_same_buildingpart`
+
+Note: exception-focused query (`missing CONNECTS`) is intentionally excluded from scenario tier.
 
 ## 3. Execution Rules
 
@@ -49,6 +66,8 @@ Command:
 python scripts/benchmark_queries.py --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
 ```
 
+For guaranteed DB sync before benchmark, run import with Neo4j export first (or use `scripts/refresh_latest_reports.py --to-neo4j`).
+
 Alternative:
 
 ```bash
@@ -59,8 +78,9 @@ python -m citygml_sg.app.cli benchmark --config configs/default.yaml --output da
 
 | Query ID | Goal | Cypher Summary | Result Count | Avg Time (ms) | P95 (ms) | Note |
 |---|---|---|---:|---:|---:|---|
-| Q1 | Intersection (Furniture-Furniture) | `MATCH ... INTERSECTS ...` | 0 | 0.0 | 0.0 | |
-| Q2 | Touch (Furniture-Opening) | `MATCH ... TOUCHES ...` | 0 | 0.0 | 0.0 | |
+| B1 | Baseline total nodes | `MATCH (n) RETURN count(n)` | 0 | 0.0 | 0.0 | should be >0 on populated DB |
+| H4 | Opening-room connectivity | `MATCH (:Opening)-[:CONNECTS]->(:Room)` | 0 | 0.0 | 0.0 | 0 can be valid per dataset |
+| S5 | Room-to-room pairs (path-like) | `Room <-INTERIOR_ROOM- BuildingPart -INTERIOR_ROOM-> Room` | 0 | 0.0 | 0.0 | human-style navigation proxy |
 
 Output file:
 
@@ -78,8 +98,9 @@ JSON fields:
 ## 5. Interpretation
 
 1. Accuracy:
-   - compare counts with domain expectation
-   - inspect large spikes/drops in relation counts
+   - baseline tier should remain structurally stable
+   - hard tier should be interpreted with candidate-pair sparsity
+   - scenario tier should be interpreted as user-facing query behavior
 2. Consistency:
    - check repeat stability on same dataset
 3. Performance:
@@ -92,4 +113,3 @@ JSON fields:
 2. Query result summary table
 3. Sample IDs for representative results
 4. Before/after tuning notes
-

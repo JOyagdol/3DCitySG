@@ -75,3 +75,9 @@ data/input/(210812)E-TYPE_201dong-IFC4.gml
 # Localized docs (Korean) - keep local only
 docs/*_ko.md
 docs/ko/
+
+# Local history docs (archive-only)
+docs/dataset_result_history.md
+docs/experiment_results_history.md
+docs/dataset_result_history_ko.md
+docs/experiment_results_history_ko.md

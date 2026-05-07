@@ -3,6 +3,9 @@
 Baseline: CityGML 2.0  
 Goal: define stable implementation/validation criteria for core features.
 
+Command source of truth:
+1. `docs/command_cheatsheet.md`
+
 ## 1. Spatial Threshold Parameters (`spatial.*`)
 
 ### 1.1 Goal
@@ -48,6 +51,7 @@ In `summary.scorecard`:
 1. `spatial_coverage`
 2. `spatial_precision_sanity`
 3. `spatial_pair_stats`
+4. `spatial_pair_family_scores`
 
 Source of truth for formula/definition: `docs/evaluation_scorecard.md`.
 
@@ -70,13 +74,9 @@ Source of truth for formula/definition: `docs/evaluation_scorecard.md`.
 2. Precedence/exclusive cases (`INTERSECTS > TOUCHES > ADJACENT_TO`)
 3. Negative cases (non-touching, non-adjacent, non-intersecting)
 
-### 3.3 Run Commands
+### 3.3 Execution Reference
 
-```powershell
-python -m pytest tests/test_spatial_priority.py -q
-python -m pytest tests/test_spatial_relation_pairs.py -q
-python -m pytest tests/test_pipeline_regression.py -q
-```
+1. Use `docs/command_cheatsheet.md` for exact test commands.
 
 ## 4. Large-Scale Performance Profiling
 
@@ -108,4 +108,3 @@ If implementation or policy changes, update in the same work unit:
 4. `docs/graph_schema.md`
 5. `docs/regression_testing.md`
 6. `docs/development_summary.md`
-

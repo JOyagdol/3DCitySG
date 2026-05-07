@@ -96,7 +96,15 @@ Scorecard also reports three spatial diagnostics:
 - Per family, reports:
   - `candidate_pairs`
   - `inferred_total`
+  - `coverage_score`
   - `relation_counts` (`ADJACENT_TO`, `TOUCHES`, `INTERSECTS`)
+
+4. `spatial_pair_family_scores`
+- Meaning: explicit family-level score summary used as improvement signal.
+- Per family, reports:
+  - `score` (candidate-hit-rate)
+  - `actual_total`
+  - `expected_total`
 
 ## Interpretation
 

@@ -91,6 +91,7 @@ def test_summary_keeps_scorecard_and_appearance_coverage(tmp_path: Path) -> None
     assert "spatial_coverage" in summary["scorecard"]
     assert "spatial_precision_sanity" in summary["scorecard"]
     assert "spatial_pair_stats" in summary["scorecard"]
+    assert "spatial_pair_family_scores" in summary["scorecard"]
     assert "appearance_coverage" in summary
     assert summary["appearance_coverage"]["appearance_node_count"] == 1
 
@@ -112,3 +113,10 @@ def test_boundary_surface_keeps_subtype_node(tmp_path: Path) -> None:
         if node["properties"].get("surface_type") == "WallSurface"
     }
     assert any((boundary_id, "HAS_SURFACE_TYPE", type_id) in edge_set for type_id in wall_type_ids)
+
+
+def test_connects_fallback_links_opening_to_room_without_direct_room_ancestor(tmp_path: Path) -> None:
+    payload = _run_pipeline(MINIMAL_GML_WITH_GLOBAL_APPEARANCE, tmp_path)
+    edge_set = {(edge["source_id"], edge["relation"], edge["target_id"]) for edge in payload["edges"]}
+
+    assert ("d1", "CONNECTS", "r1") in edge_set

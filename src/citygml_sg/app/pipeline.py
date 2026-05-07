@@ -33,7 +33,7 @@ from citygml_sg.modules.opening.parser import parse_opening_element
 from citygml_sg.modules.room.parser import parse_room_element
 from citygml_sg.parsers.citygml.reader import read_citygml
 from citygml_sg.config.settings import load_project_config
-from citygml_sg.storage.json.writer import write_json
+from citygml_sg.storage.json.writer import write_graph_json_stream, write_json
 from citygml_sg.storage.neo4j.client import Neo4jClient
 from citygml_sg.storage.neo4j.constraints import CONSTRAINTS
 from citygml_sg.storage.neo4j.reader import Neo4jReader
@@ -140,6 +140,19 @@ SPATIAL_INFERRED_RELATIONS: set[RelationType] = {
     RelationType.TOUCHES,
     RelationType.INTERSECTS,
 }
+SEMANTIC_HIERARCHY_RELATIONS: set[RelationType] = {
+    RelationType.HAS_CITY_OBJECT,
+    RelationType.HAS_GROUP_MEMBER,
+    RelationType.CONTAINS,
+    RelationType.CONSISTS_OF_BUILDING_PART,
+    RelationType.INTERIOR_ROOM,
+    RelationType.OUTER_BUILDING_INSTALLATION,
+    RelationType.INTERIOR_BUILDING_INSTALLATION,
+    RelationType.ROOM_INSTALLATION,
+    RelationType.INTERIOR_FURNITURE,
+    RelationType.BOUNDED_BY,
+    RelationType.HAS_OPENING,
+}
 SPATIAL_REQUIRED_METADATA_KEYS: tuple[str, ...] = (
     "method",
     "distance",
@@ -179,34 +192,110 @@ PIPELINE_STAGE_ORDER: tuple[str, ...] = (
 
 BENCHMARK_QUERY_SET: tuple[tuple[str, str, str], ...] = (
     (
-        "Q1",
-        "furniture_furniture_intersects_pairs",
+        "B1",
+        "baseline__all_nodes",
+        "MATCH (n) RETURN count(n) AS count",
+    ),
+    (
+        "B2",
+        "baseline__buildings",
+        "MATCH (:Building) RETURN count(*) AS count",
+    ),
+    (
+        "B3",
+        "baseline__rooms",
+        "MATCH (:Room) RETURN count(*) AS count",
+    ),
+    (
+        "B4",
+        "baseline__openings",
+        "MATCH (:Opening) RETURN count(*) AS count",
+    ),
+    (
+        "B5",
+        "baseline__furniture_inside_room_links",
+        "MATCH (:BuildingFurniture)-[:INSIDE]->(:Room) RETURN count(*) AS count",
+    ),
+    (
+        "B6",
+        "baseline__room_boundary_links",
+        "MATCH (:Room)-[:BOUNDED_BY]->(:BoundarySurface) RETURN count(*) AS count",
+    ),
+    (
+        "B7",
+        "baseline__boundary_opening_links",
+        "MATCH (:BoundarySurface)-[:HAS_OPENING]->(:Opening) RETURN count(*) AS count",
+    ),
+    (
+        "H1",
+        "hard__furniture_furniture_spatial_any",
         (
-            "MATCH (f1:BuildingFurniture)-[:INTERSECTS]->(f2:BuildingFurniture) "
-            "WHERE f1.id < f2.id RETURN count(*) AS count"
+            "MATCH (:BuildingFurniture)-[r:INTERSECTS|TOUCHES|ADJACENT_TO]->(:BuildingFurniture) "
+            "RETURN count(r) AS count"
         ),
     ),
     (
-        "Q2",
-        "furniture_opening_touches",
-        "MATCH (:BuildingFurniture)-[:TOUCHES]->(:Opening) RETURN count(*) AS count",
+        "H2",
+        "hard__furniture_opening_spatial_any",
+        (
+            "MATCH (:BuildingFurniture)-[r:INTERSECTS|TOUCHES|ADJACENT_TO]->(:Opening) "
+            "RETURN count(r) AS count"
+        ),
     ),
     (
-        "Q3",
-        "furniture_boundary_adjacent",
-        "MATCH (:BuildingFurniture)-[:ADJACENT_TO]->(:BoundarySurface) RETURN count(*) AS count",
+        "H3",
+        "hard__furniture_boundary_spatial_any",
+        (
+            "MATCH (:BuildingFurniture)-[r:INTERSECTS|TOUCHES|ADJACENT_TO]->(:BoundarySurface) "
+            "RETURN count(r) AS count"
+        ),
     ),
     (
-        "Q4",
-        "opening_room_connects",
+        "H4",
+        "hard__opening_room_connects",
         "MATCH (:Opening)-[:CONNECTS]->(:Room) RETURN count(*) AS count",
     ),
     (
-        "Q5",
-        "room_internal_furniture_touching_opening",
+        "H5",
+        "hard__room_internal_furniture_touching_opening",
         (
             "MATCH (f:BuildingFurniture)-[:INSIDE]->(r:Room)<-[:CONNECTS]-(o:Opening) "
             "MATCH (f)-[:TOUCHES]->(o) RETURN count(DISTINCT f) AS count"
+        ),
+    ),
+    (
+        "S1",
+        "scenario__rooms_with_furniture",
+        "MATCH (r:Room)-[:INTERIOR_FURNITURE]->(:BuildingFurniture) RETURN count(DISTINCT r) AS count",
+    ),
+    (
+        "S2",
+        "scenario__rooms_with_installations",
+        (
+            "MATCH (r:Room)-[:ROOM_INSTALLATION]->(:IntBuildingInstallation) "
+            "RETURN count(DISTINCT r) AS count"
+        ),
+    ),
+    (
+        "S3",
+        "scenario__door_opening_count",
+        "MATCH (:Opening {opening_type: 'Door'}) RETURN count(*) AS count",
+    ),
+    (
+        "S4",
+        "scenario__rooms_with_internal_furniture_spatial_pairs",
+        (
+            "MATCH (r:Room)<-[:INSIDE]-(f1:BuildingFurniture)-[:INTERSECTS|TOUCHES|ADJACENT_TO]->"
+            "(f2:BuildingFurniture)-[:INSIDE]->(r) "
+            "WHERE f1.id < f2.id RETURN count(DISTINCT r) AS count"
+        ),
+    ),
+    (
+        "S5",
+        "scenario__room_to_room_pairs_via_same_buildingpart",
+        (
+            "MATCH (r1:Room)<-[:INTERIOR_ROOM]-(bp:BuildingPart)-[:INTERIOR_ROOM]->(r2:Room) "
+            "WHERE r1.id < r2.id RETURN count(*) AS count"
         ),
     ),
 )
@@ -1249,7 +1338,134 @@ def _build_spatial_edges(
     return len(graph.edges) - edge_count_before
 
 
-def _graph_to_payload(
+def _reverse_edge_index(
+    graph: SceneGraph,
+    relations: set[RelationType],
+) -> dict[str, list[str]]:
+    index: dict[str, list[str]] = defaultdict(list)
+    for edge in graph.edges:
+        if edge.relation in relations:
+            index[edge.target_id].append(edge.source_id)
+    return index
+
+
+def _ancestor_ids(start_id: str, reverse_index: dict[str, list[str]]) -> set[str]:
+    visited: set[str] = set()
+    stack = list(reverse_index.get(start_id, []))
+    while stack:
+        node_id = stack.pop()
+        if node_id in visited:
+            continue
+        visited.add(node_id)
+        stack.extend(reverse_index.get(node_id, []))
+    return visited
+
+
+def _augment_connects_edges(
+    graph: SceneGraph,
+    *,
+    touch_epsilon: float,
+    adjacent_epsilon: float,
+    intersection_epsilon: float,
+) -> int:
+    nodes_by_id = graph.nodes
+    connects_index = _edge_index(graph, RelationType.CONNECTS)
+    reverse_hierarchy = _reverse_edge_index(graph, SEMANTIC_HIERARCHY_RELATIONS)
+    forward_hierarchy = _edge_index(graph, RelationType.CONTAINS)
+
+    for relation in (
+        RelationType.CONSISTS_OF_BUILDING_PART,
+        RelationType.INTERIOR_ROOM,
+        RelationType.HAS_CITY_OBJECT,
+        RelationType.HAS_GROUP_MEMBER,
+        RelationType.OUTER_BUILDING_INSTALLATION,
+        RelationType.INTERIOR_BUILDING_INSTALLATION,
+        RelationType.ROOM_INSTALLATION,
+    ):
+        for source_id, target_ids in _edge_index(graph, relation).items():
+            forward_hierarchy[source_id].extend(target_ids)
+
+    opening_and_room_bboxes = _build_node_bboxes(
+        graph,
+        target_types={NodeType.OPENING, NodeType.ROOM},
+    )
+    added = 0
+
+    opening_ids = [
+        node_id
+        for node_id, node in nodes_by_id.items()
+        if node.node_type == NodeType.OPENING
+    ]
+    for opening_id in opening_ids:
+        if connects_index.get(opening_id):
+            continue
+        opening_node = nodes_by_id.get(opening_id)
+        if opening_node is None:
+            continue
+
+        ancestors = _ancestor_ids(opening_id, reverse_hierarchy)
+        ancestor_rooms = sorted(
+            node_id
+            for node_id in ancestors
+            if nodes_by_id.get(node_id) is not None and nodes_by_id[node_id].node_type == NodeType.ROOM
+        )
+        candidate_room_ids: set[str] = set(ancestor_rooms)
+
+        if not candidate_room_ids:
+            seed_ids = [
+                node_id
+                for node_id in ancestors
+                if nodes_by_id.get(node_id) is not None
+                and nodes_by_id[node_id].node_type in {NodeType.BUILDING_PART, NodeType.BUILDING}
+            ]
+            for seed_id in seed_ids:
+                for descendant_id in _descendants(seed_id, forward_hierarchy):
+                    node = nodes_by_id.get(descendant_id)
+                    if node is not None and node.node_type == NodeType.ROOM:
+                        candidate_room_ids.add(descendant_id)
+
+        if not candidate_room_ids:
+            continue
+
+        opening_bbox = opening_and_room_bboxes.get(opening_id)
+        filtered_room_ids: list[str] = []
+        if opening_bbox is not None:
+            for room_id in sorted(candidate_room_ids):
+                room_bbox = opening_and_room_bboxes.get(room_id)
+                if room_bbox is None:
+                    continue
+                relation, _ = infer_spatial_relation(
+                    opening_bbox,
+                    room_bbox,
+                    touch_epsilon=touch_epsilon,
+                    adjacent_epsilon=adjacent_epsilon,
+                    intersection_epsilon=intersection_epsilon,
+                )
+                if relation is not None:
+                    filtered_room_ids.append(room_id)
+
+        final_room_ids = filtered_room_ids or sorted(candidate_room_ids)
+        for room_id in final_room_ids:
+            before = len(graph.edges)
+            _add_edge_if_valid(
+                graph,
+                create_edge(
+                    opening_id,
+                    room_id,
+                    RelationType.CONNECTS,
+                    method="hierarchy_bbox_fallback_v1",
+                    source="connects_fallback",
+                ),
+            )
+            if len(graph.edges) > before:
+                added += 1
+
+    if added > 0:
+        LOGGER.info("[CONNECTS] fallback augmentation added_edges=%d", added)
+    return added
+
+
+def _build_graph_summary(
     graph: SceneGraph,
     input_path: Path,
     scorecard: dict | None = None,
@@ -1291,28 +1507,7 @@ def _graph_to_payload(
     if stage_durations is not None:
         summary["stage_durations"] = {key: round(float(value), 6) for key, value in stage_durations.items()}
 
-    return {
-        "summary": {
-            **summary,
-        },
-        "nodes": [
-            {
-                "id": node.node_id,
-                "type": node.node_type.value,
-                "properties": node.properties,
-            }
-            for node in graph.nodes.values()
-        ],
-        "edges": [
-            {
-                "source_id": edge.source_id,
-                "target_id": edge.target_id,
-                "relation": edge.relation.value,
-                "properties": edge.properties,
-            }
-            for edge in graph.edges
-        ],
-    }
+    return summary
 
 
 def _count_generic_attribute_entries(graph: SceneGraph) -> int:
@@ -1553,12 +1748,21 @@ def _build_spatial_score_metrics(graph: SceneGraph) -> dict[str, object]:
     expected_total = int(sum(candidate_counts.values()))
 
     pair_stats: dict[str, dict[str, object]] = {}
+    pair_family_scores: dict[str, dict[str, object]] = {}
     for family, candidate_total in candidate_counts.items():
         relation_counts = family_relation_counts[family]
+        family_inferred_total = int(sum(relation_counts.values()))
         pair_stats[family] = {
             "candidate_pairs": int(candidate_total),
-            "inferred_total": int(sum(relation_counts.values())),
+            "inferred_total": family_inferred_total,
+            "coverage_score": round(_safe_ratio(family_inferred_total, int(candidate_total)) * 100.0, 2),
             "relation_counts": dict(relation_counts),
+        }
+        pair_family_scores[family] = {
+            "score": round(_safe_ratio(family_inferred_total, int(candidate_total)) * 100.0, 2),
+            "actual_total": family_inferred_total,
+            "expected_total": int(candidate_total),
+            "definition": "family-level candidate-hit-rate over directed candidate pairs",
         }
 
     return {
@@ -1578,6 +1782,7 @@ def _build_spatial_score_metrics(graph: SceneGraph) -> dict[str, object]:
             "pair_conflict_count": int(pair_conflict_count),
         },
         "spatial_pair_stats": pair_stats,
+        "spatial_pair_family_scores": pair_family_scores,
     }
 
 
@@ -2127,13 +2332,29 @@ def _emit_conversion_report(
         _log_metric(
             "Spatial pair stats",
             ", ".join(
-                "%s(candidates=%d,inferred=%d)"
+                "%s(candidates=%d,inferred=%d,score=%.2f)"
                 % (
                     name,
                     stats.get("candidate_pairs", 0),
                     stats.get("inferred_total", 0),
+                    float(stats.get("coverage_score", 0.0)),
                 )
                 for name, stats in pair_stats.items()
+            ),
+        )
+    if "spatial_pair_family_scores" in scorecard:
+        family_scores = scorecard["spatial_pair_family_scores"]
+        _log_metric(
+            "Spatial pair family scores",
+            ", ".join(
+                "%s(score=%.2f,%d/%d)"
+                % (
+                    name,
+                    float(stats.get("score", 0.0)),
+                    int(stats.get("actual_total", 0)),
+                    int(stats.get("expected_total", 0)),
+                )
+                for name, stats in family_scores.items()
             ),
         )
 
@@ -2510,6 +2731,12 @@ def run_import_pipeline(
         polygon_memberships = _attach_lod_geometry_structure(graph, root, by_element)
         _attach_geometry_subgraph(graph, root, by_element, polygon_memberships=polygon_memberships)
         _attach_appearance_subgraph(graph, root, by_element)
+        connects_added = _augment_connects_edges(
+            graph,
+            touch_epsilon=touch_epsilon,
+            adjacent_epsilon=adjacent_epsilon,
+            intersection_epsilon=intersection_epsilon,
+        )
         spatial_added = _build_spatial_edges(
             graph,
             touch_epsilon=touch_epsilon,
@@ -2522,7 +2749,8 @@ def run_import_pipeline(
             t_build_geometry,
             detail=(
                 f"nodes+={len(graph.nodes) - node_before}, "
-                f"edges+={len(graph.edges) - edge_before}, spatial_edges+={spatial_added}"
+                f"edges+={len(graph.edges) - edge_before}, "
+                f"connects_fallback+={connects_added}, spatial_edges+={spatial_added}"
             ),
         )
     else:
@@ -2570,20 +2798,38 @@ def run_import_pipeline(
         "export_json": 0.0,
         "total": 0.0,
     }
-    payload = _graph_to_payload(
+    summary = _build_graph_summary(
         graph,
         source,
         scorecard=scorecard,
         neo4j_export=neo4j_export,
         stage_durations=stage_durations,
     )
-    write_json(target, payload)
+    write_graph_json_stream(
+        target,
+        summary=summary,
+        nodes=(
+            {
+                "id": node.node_id,
+                "type": node.node_type.value,
+                "properties": node.properties,
+            }
+            for node in graph.nodes.values()
+        ),
+        edges=(
+            {
+                "source_id": edge.source_id,
+                "target_id": edge.target_id,
+                "relation": edge.relation.value,
+                "properties": edge.properties,
+            }
+            for edge in graph.edges
+        ),
+    )
     t_export_json = perf_counter() - t0
     t_total = perf_counter() - t0_total
     stage_durations["export_json"] = t_export_json
     stage_durations["total"] = t_total
-    payload["summary"]["stage_durations"] = {key: round(float(value), 6) for key, value in stage_durations.items()}
-    write_json(target, payload)
     _stage_done("export_json", t_export_json, detail=str(target))
 
     _emit_conversion_report(
@@ -2594,7 +2840,7 @@ def run_import_pipeline(
         scorecard=scorecard,
         neo4j_export=neo4j_export,
     )
-    LOGGER.info("Import complete: nodes=%d edges=%d", payload["summary"]["node_count"], payload["summary"]["edge_count"])
+    LOGGER.info("Import complete: nodes=%d edges=%d", len(graph.nodes), len(graph.edges))
     if to_neo4j and neo4j_export and not neo4j_export.get("success"):
         return 3
     return 0
@@ -2629,8 +2875,18 @@ def _execute_benchmark_query(
         record = session.run(query).single()
         elapsed_ms = (perf_counter() - t0) * 1000.0
         timings_ms.append(elapsed_ms)
-        if record is not None and "count" in record:
-            result_count = int(record["count"])
+        if record is not None:
+            value = None
+            keys = tuple(record.keys())
+            if "count" in keys:
+                value = record["count"]
+            elif len(record) > 0:
+                value = record[0]
+            try:
+                if value is not None:
+                    result_count = int(value)
+            except (TypeError, ValueError):
+                pass
     return result_count, timings_ms
 
 
