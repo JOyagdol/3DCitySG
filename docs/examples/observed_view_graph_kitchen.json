@@ -1,0 +1,78 @@
+{
+  "schema_version": "0.2.0",
+  "metadata": {
+    "query_id": "e_type_kitchen_view_example",
+    "source": "manual_example_for_world_graph_retrieval",
+    "note": "Kitchen-like observed view graph used for E-TYPE room-localization retrieval experiments."
+  },
+  "objects": [
+    {
+      "alias": "storage_1",
+      "type": "BuildingFurniture",
+      "category": "storage",
+      "weight": 4.0,
+      "confidence": 0.95,
+      "visibility": 1.0
+    },
+    {
+      "alias": "fridge_1",
+      "type": "BuildingFurniture",
+      "category": "fridge",
+      "weight": 4.0,
+      "confidence": 0.9,
+      "visibility": 1.0
+    },
+    {
+      "alias": "sofa_1",
+      "type": "BuildingFurniture",
+      "category": "sofa",
+      "weight": 1.0,
+      "confidence": 0.65,
+      "visibility": 0.35
+    },
+    {
+      "alias": "table_1",
+      "type": "BuildingFurniture",
+      "category": "table",
+      "weight": 1.0,
+      "confidence": 0.55,
+      "visibility": 0.25
+    },
+    {
+      "alias": "door_1",
+      "type": "Opening",
+      "category": "door",
+      "confidence": 0.8,
+      "visibility": 0.6
+    }
+  ],
+  "relations": [
+    ["storage_1", "ATTACHED_TO", "FloorSurface"],
+    ["fridge_1", "ATTACHED_TO", "FloorSurface"],
+    ["door_1", "CONNECTS", "Room"]
+  ],
+  "constraints": {
+    "room": {
+      "min_doors": 1,
+      "candidate_limit": 10
+    },
+    "matching": {
+      "min_object_matches": 1,
+      "require_all_required_objects": true,
+      "relation_match_mode": "soft"
+    },
+    "weights": {
+      "object": 1.0,
+      "relation": 1.0,
+      "structural": 0.5,
+      "topology": 0.25,
+      "penalty_missing_required": -3.0
+    }
+  },
+  "query": {
+    "task": "room_localization",
+    "return_top_k": 10,
+    "explain": true,
+    "score_profile": "kitchen_view_v1"
+  }
+}

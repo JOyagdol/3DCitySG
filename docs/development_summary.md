@@ -1,6 +1,6 @@
 # 3DCitySG Development Summary
 
-Baseline date: 2026-05-07
+Baseline date: 2026-05-15
 
 ## 1. Current Baseline
 
@@ -25,19 +25,25 @@ Baseline date: 2026-05-07
    - `BoundarySurface -> HAS_SURFACE_TYPE -> BoundarySurfaceType`
    - original subtype (for example `WallSurface`, `FloorSurface`) is preserved in graph-level semantics.
 
-### 2.2 Spatial Relations (v1)
+### 2.2 Spatial Relations (v1 Baseline + v2 Extension)
 
-1. Relation set: `INSIDE`, `CONNECTS`, `ADJACENT_TO`, `TOUCHES`, `INTERSECTS`
-2. Priority/exclusivity: `INTERSECTS > TOUCHES > ADJACENT_TO`
-3. Pair families:
+1. v1 relation set: `INSIDE`, `CONNECTS`, `ADJACENT_TO`, `TOUCHES`, `INTERSECTS`
+2. v2 extension set: `HOSTED_BY`, `ADJACENT_SURFACE`, `ATTACHED_TO`, `ABOVE`, `BELOW`
+3. Priority/exclusivity: `INTERSECTS > TOUCHES > ADJACENT_TO`
+4. Pair families:
    - Furniture <-> BoundarySurface
    - Furniture <-> Door|Window
    - Furniture <-> Furniture
-4. Computation method: coordinate-based AABB approximation
-5. Spatial edge metadata:
+5. Computation method:
+   - AABB candidate filtering
+   - OBB/Polygon refinement for `INTERSECTS`
+   - minimum contact area/length guard for `TOUCHES`
+   - boundary bbox occlusion guard for `ADJACENT_TO`
+   - polygon shared-edge validation for `ADJACENT_SURFACE`
+6. Spatial edge metadata:
    - `method`, `distance`
    - `epsilon_touch`, `epsilon_adjacent`, `epsilon_intersection`
-   - `confidence`, `computed_at`
+   - `confidence`, `evidence_score`, `computed_at`
 
 ### 2.3 Configuration, Scoring, and Tests
 
@@ -67,26 +73,34 @@ Baseline date: 2026-05-07
    - scenario tier (`S1..S5`)
 9. Dataset-level result tracking document added:
    - `docs/dataset_result_comparison.md`
+10. Paper-oriented spatial-relation v2 algorithm notes added:
+   - `docs/spatial_relation_v2_algorithm_notes.md`
+   - `docs/spatial_relation_v2_algorithm_notes_ko.md`
 
-### 2.5 Latest Execution Snapshot (2026-05-07)
+### 2.5 Latest Execution Snapshot
 
-1. E-TYPE_201dong (`data/output/e_type_201dong_ifc4__*.json`):
+1. E-TYPE_201dong latest import-only (2026-05-15, `data/output/import_summary.json`):
+   - import: nodes=`1,076,200`, edges=`1,240,562`, overall=`98.04`, spatial coverage=`23.81`
+   - spatial plausible coverage=`90.43`
+   - relation counts: `CONNECTS=37`, `HOSTED_BY=24`, `ADJACENT_TO=74`, `TOUCHES=18`, `INTERSECTS=4`, `ADJACENT_SURFACE=142`, `ATTACHED_TO=10`
+   - floor representative correction is reflected: sofa/table/smart table fridge attach to the top finish floor instead of the insulation layer.
+2. E-TYPE_201dong last benchmark/profile full refresh (2026-05-07, `data/output/e_type_201dong_ifc4__*.json`):
    - benchmark: `query_total=17`, `query_failed=0`, `avg_query_time_ms=4.065`
    - tier nonzero: `B=6/7`, `H=4/5`, `S=4/5`
-   - relation counts: `CONNECTS=63`, `ADJACENT_TO=8`, `TOUCHES=4`, `INTERSECTS=4`
    - profile: `stage.total.avg=90.642`, `wall_time.avg=141.727`
    - current baseline check status: `FAIL` (spatial coverage threshold mismatch; profile total is now under threshold)
-2. FZK Haus LoD2 (`data/output/fzk_haus_lod2_v2__*.json`):
+3. FZK Haus LoD2 (`data/output/fzk_haus_lod2_v2__*.json`):
    - benchmark: `query_total=17`, `query_failed=0`, `avg_query_time_ms=7.799`
    - tier nonzero: `B=2/7`, `H=0/5`, `S=0/5`
    - compact dataset with no v1 spatial candidate pairs, so hard/scenario counts stay zero by design.
-3. Snowdon Towers (`data/output/snowdon_towers_ifc4__*.json`):
+4. Snowdon Towers (`data/output/snowdon_towers_ifc4__*.json`):
    - import: nodes=`16,960,567`, edges=`19,779,555`, overall=`99.87`, spatial coverage=`5.85`
    - benchmark: `query_total=17`, `query_failed=0`, `avg_query_time_ms=5.128`
    - tier nonzero: `B=6/7`, `H=4/5`, `S=4/5`
    - profile: resumed after interruption, final aggregate `runs_success=3`, `wall_time.avg=1510.059`
 4. CONNECTS generation now includes fallback augmentation:
    - hierarchy + bbox-assisted link recovery when direct room ancestry is missing.
+5. Latest v2 policy narrows `CONNECTS` scoring to Door -> Room connectivity.
 
 ## 3. Partially Completed
 
@@ -101,10 +115,10 @@ Baseline date: 2026-05-07
 
 1. Benchmark result accumulation across datasets
 2. Before/after tuning comparison tables (`batch_size`, epsilon combinations)
-3. v2 spatial extensions:
-   - direction relations (left/right/up/down/front/back)
-   - distance-bin relations (near/far)
-   - accessibility/path relations
+3. v2 lock validation:
+   - rerun benchmark/profile after the latest spatial import
+   - cross-validate E-type/FZK/Snowdon with the v2 relation set
+   - finalize relation count and score tables after engine precision lock
 
 ## 5. Next Priorities
 

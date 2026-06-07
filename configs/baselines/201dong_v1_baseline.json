@@ -16,7 +16,9 @@
       "relation_coverage_min": 95.0,
       "property_coverage_min": 96.0,
       "spatial_coverage_min": 50.0,
-      "spatial_precision_sanity_min": 99.0
+      "spatial_density_min": 30.0,
+      "spatial_precision_sanity_min": 99.0,
+      "spatial_quality_min": 99.0
     },
     "node_type_counts": {
       "Building": 1,

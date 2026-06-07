@@ -64,47 +64,113 @@ Expected totals must be computed from **supported extraction channels only**.
   - `HAS_RING`
   - `HAS_POS`
 - This avoids unfair penalties from unsupported CityGML relation channels.
+- Runtime-augmented v2 spatial extension relations (`HOSTED_BY`, `ADJACENT_SURFACE`, `ATTACHED_TO`, `ABOVE`, `BELOW`)
+  are reported in graph outputs but are not used as direct source-structure denominators in relation coverage.
 
 3. Property expected totals
 - Expected properties are counted only when direct child tags actually exist on supported semantic elements.
 - Generic attributes are counted from `gen:*Attribute` entries that are currently parsed into `attr_*` fields.
 
-## Spatial Diagnostic Metrics (v1)
+## Spatial Diagnostic Metrics (v2)
 
-Scorecard also reports three spatial diagnostics:
+Scorecard reports density-oriented and quality-oriented spatial diagnostics separately:
 
-1. `spatial_coverage`
-- Meaning: hit-rate over directed candidate pairs in current v1 spatial scope.
-- Scope pairs:
-  - `Furniture <-> BoundarySurface`
-  - `Furniture <-> Door|Window` (opening subtype)
-  - `Furniture <-> Furniture`
-- `expected_total`: number of directed candidate pairs with bbox available in room-scoped candidate sets.
-- `actual_total`: number of inferred spatial edges (`ADJACENT_TO`, `TOUCHES`, `INTERSECTS`) generated from those pairs.
-- `score`: `min(actual_total / expected_total, 1.0) * 100`
+1. `spatial_coverage` (v2 definition)
+- Meaning: raw candidate hit-rate over active pair families.
+- Based on **undirected** candidate pairs (not directed edge count).
+- `expected_total` is built from candidate pair enumeration (graph-structural scope + availability checks),
+  not from epsilon threshold checks.
+- Thresholds (`touch_epsilon`, `adjacent_epsilon`, `intersection_epsilon`) affect inferred edges (`actual_total`),
+  not candidate pool size (`expected_total`), except the explicit CONNECTS fallback floor policy.
+- Scope families:
+  - `furniture_boundary_surface`
+  - `furniture_opening` (door/window opening subtype only)
+  - `furniture_furniture`
+  - `opening_room_connects` (`CONNECTS`, Door->Room only)
+- `opening_room_connects` candidate pairs are derived from structural chain:
+  - `Room -[:BOUNDED_BY]-> BoundarySurface -[:HAS_OPENING]-> Opening`
+  - fallback strategy: `max(source_expected_connects, structural_chain_candidates, inferred_connect_pairs_floor)`
+  - this prevents `expected_total=0` when `CONNECTS` relations are inferred
+- Family weights:
+  - `furniture_boundary_surface`: `0.30`
+  - `furniture_opening`: `0.25`
+  - `furniture_furniture`: `0.25`
+  - `opening_room_connects`: `0.20`
+- Main fields:
+  - `actual_total`: inferred undirected pair count
+  - `expected_total`: candidate undirected pair count
+  - `actual_directed_total`: inferred directed relation count (compatibility/debug)
+  - `expected_directed_total`: candidate directed pair count (compatibility/debug)
+  - families with `expected_total=0` are reported as `N/A` (`null`) at family score level
+  - top-level totals are aggregated over active families (`expected_total > 0`)
 
-2. `spatial_precision_sanity`
-- Meaning: no-GT quality sanity score for inferred spatial edges.
+2. `spatial_plausible_coverage` (supplementary denominator)
+- Meaning: epsilon-aware plausible candidate hit-rate, reported as a supplementary view.
+- Denominator:
+  - `plausible_expected_total` = candidates that pass epsilon-aware plausibility check
+  - computed with current runtime thresholds (`touch_epsilon`, `adjacent_epsilon`, `intersection_epsilon`)
+- Purpose:
+  - keeps operational/history comparability by preserving `spatial_coverage` denominator
+  - adds a threshold-aware denominator for interpretation
+- Main fields:
+  - `actual_total`
+  - `plausible_expected_total`
+  - `expected_total` (raw denominator retained for side-by-side reading)
+
+3. `spatial_density`
+- Meaning: family-weighted normalized density summary, separated from quality sanity.
+- Main fields:
+  - `score`: weighted family-normalized score
+  - `family_weighted_score`
+  - `family_unweighted_score`
+  - `active_family_count`
+- Only active families (`expected_total > 0`) participate in weighted normalization.
+
+4. `spatial_precision_sanity`
+- Meaning: quality-only no-GT sanity score for inferred spatial edges.
 - It is the average of:
-  - metadata validity ratio (required keys/types/range)
-  - schema validity ratio (triple allowed by schema)
-  - precedence consistency ratio (one strongest relation per directed pair)
-- `pair_conflict_count` indicates directed pairs that still contain more than one inferred relation (should be zero after normalization).
+  - metadata validity ratio
+  - schema validity ratio
+  - precedence consistency ratio
+- Main fields:
+  - `metadata_score`
+  - `schema_score`
+  - `precedence_score`
+  - `pair_conflict_count`
 
-3. `spatial_pair_stats`
-- Meaning: pair-family breakdown.
-- Per family, reports:
+5. `spatial_quality`
+- Alias-style quality block for explicit density/quality separation in downstream reporting.
+- Uses the same quality components as `spatial_precision_sanity`.
+
+6. `spatial_pair_stats`
+- Pair-family breakdown with both pair-level and directed totals.
+- Per family:
   - `candidate_pairs`
+  - `plausible_candidate_pairs`
+  - `candidate_pairs_directed`
+  - `inferred_pair_total`
   - `inferred_total`
   - `coverage_score`
-  - `relation_counts` (`ADJACENT_TO`, `TOUCHES`, `INTERSECTS`)
+  - `relation_counts`
 
-4. `spatial_pair_family_scores`
-- Meaning: explicit family-level score summary used as improvement signal.
-- Per family, reports:
-  - `score` (candidate-hit-rate)
+7. `spatial_pair_family_scores`
+- Family-level normalized score entries.
+- Per family:
+  - `score`
   - `actual_total`
   - `expected_total`
+  - `weight`
+  - `weighted_score_contribution`
+  - `score=null` when `expected_total=0` (N/A policy)
+
+8. `spatial_family_normalized_coverage`
+- Aggregated family-normalized summary with explicit weight map.
+
+9. `spatial_coverage_policy`
+- Runtime policy metadata:
+  - `include_connects_family=true`
+  - `zero_candidate_score_policy="N/A(null)"`
+  - `plausible_expected_policy="epsilon-aware plausible candidates reported as supplementary denominator"`
 
 ## Interpretation
 
@@ -112,8 +178,19 @@ Scorecard also reports three spatial diagnostics:
 - High node/relation with low property score usually means extracted objects exist but metadata fields are not yet fully mapped.
 - Compare score trends between commits, not only one absolute number.
 - Spatial diagnostics should be read together:
-  - low `spatial_coverage` can mean sparse layout or strict thresholds
-  - low `spatial_precision_sanity` indicates metadata/schema/precedence consistency issues
+  - low `spatial_coverage` means low overall raw hit-rate (`actual_total/expected_total`)
+  - low `spatial_plausible_coverage` means low hit-rate even after threshold-aware plausible denominator adjustment
+  - low `spatial_density` means weak performance in weighted family-normalized density
+  - low `spatial_quality`/`spatial_precision_sanity` indicates metadata/schema/precedence consistency issues
+
+Decision rubric (practical):
+1. Spatial relation quality is considered strong when:
+   - `spatial_coverage` is stable/acceptable for dataset scale,
+   - `spatial_density` is stable with no critical family collapse,
+   - `spatial_quality` (or `spatial_precision_sanity`) remains high,
+   - and key family scores (for the target use case) are not near zero.
+2. High quality score alone does not imply sufficient relation richness.
+3. High coverage alone does not imply schema/metadata correctness.
 
 ## Update Rule
 

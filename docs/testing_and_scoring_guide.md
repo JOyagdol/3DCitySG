@@ -22,6 +22,7 @@ This guide does not replace:
 2. score policy source of truth in `docs/evaluation_scorecard.md`
 3. profiling-only focus in `docs/performance_profiling_guide.md`
 4. query benchmark details in `docs/query_benchmark_guide.md`
+5. detailed spatial-relation v2 algorithm notes in `docs/spatial_relation_v2_algorithm_notes.md`
 
 ## 2. Test System Overview
 
@@ -44,6 +45,7 @@ Current tracked tests:
 1. `tests/test_pipeline_regression.py`
 2. `tests/test_spatial_priority.py`
 3. `tests/test_spatial_relation_pairs.py`
+4. `tests/test_spatial_inference_refinement.py`
 
 ### 3.1 `test_pipeline_regression.py`
 
@@ -77,6 +79,13 @@ Current checks include:
 Main purpose:
 
 1. verify spatial inference pair-family generation and negative cases
+
+Current v2 checks also cover:
+
+1. `HOSTED_BY`, `ADJACENT_SURFACE`, `ATTACHED_TO`, `ABOVE`, `BELOW`
+2. Door-only `CONNECTS` scope
+3. AABB candidate filtering plus OBB/Polygon refinement
+4. polygon shared-edge validation for `ADJACENT_SURFACE`
 
 Current checks include:
 
@@ -164,6 +173,7 @@ Current expected set includes, among others:
 21. `HAS_SURFACE_DATA`
 22. `APPLIES_TO`
 23. `CONNECTS`
+   - `CONNECTS` scope in v2 policy: `Opening(Door) -> Room` (window excluded)
 
 Computation detail:
 
@@ -199,16 +209,29 @@ Policy:
 Additional metrics in scorecard:
 
 1. `spatial_coverage`
-2. `spatial_precision_sanity`
-3. `spatial_pair_stats`
-4. `spatial_pair_family_scores`
+2. `spatial_plausible_coverage`
+3. `spatial_density`
+4. `spatial_precision_sanity`
+5. `spatial_quality`
+6. `spatial_pair_stats`
+7. `spatial_pair_family_scores`
+8. `spatial_family_normalized_coverage`
+9. `spatial_coverage_policy`
 
 Interpretation:
 
-1. low `spatial_coverage` may indicate strict thresholds or sparse candidate pairs
-2. low `spatial_precision_sanity` indicates metadata/schema/precedence inconsistency
-3. `pair_conflict_count` should be near zero under precedence normalization
-4. `spatial_pair_family_scores` helps isolate which pair family improved or regressed
+1. `spatial_coverage` is raw hit-rate (`actual_total/expected_total`) over active families
+2. `spatial_plausible_coverage` is supplementary hit-rate (`actual_total/plausible_expected_total`)
+3. `spatial_density` is weighted family-normalized density score
+4. low `spatial_coverage` with higher `spatial_plausible_coverage` usually means denominator conservatism in raw candidate pool
+5. low `spatial_coverage` with higher `spatial_density` means overall pair volume is sparse but normalized family behavior is relatively stable
+6. low `spatial_density` indicates poor weighted family-level balance (one or more important families underperform)
+7. low `spatial_precision_sanity`/`spatial_quality` indicates metadata/schema/precedence inconsistency
+8. `pair_conflict_count` should be near zero under precedence normalization
+9. `spatial_pair_family_scores` and `spatial_family_normalized_coverage` help isolate which pair family improved or regressed
+10. families with `expected_total=0` are reported as `N/A` (`null`), not `100`
+11. `expected_total` is candidate-pool size from structural scope/enumeration, not epsilon-threshold filtering.
+12. `plausible_expected_total` is epsilon-aware plausible candidate size, reported as a supplementary denominator.
 
 ## 5. Large-Scale Baseline Validation (`201dong`)
 

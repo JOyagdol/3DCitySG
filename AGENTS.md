@@ -126,10 +126,43 @@ Avoid:
 - Implement v1 functions first; avoid speculative framework code.
 - Add concise docstrings for non-trivial modules.
 - Keep documentation synchronized with code changes in every task.
+- Paper-oriented documentation is required for research-facing changes:
+  - When adding or changing query scenarios, scoring logic, spatial-relation logic, benchmark behavior, or experiment outputs, update the relevant paper/reference docs in the same work unit.
+  - For room-localization or view-graph matching scenarios, document the scenario definition, command, raw result path, top candidates, score breakdown, interpretation, limitations, and paper-ready summary.
+  - Keep Korean paper notes synchronized first for active thesis/paper writing, and update English counterparts when the change affects shared project documentation.
+- Python command execution ownership:
+  - The user runs Python/Conda commands locally.
+  - The assistant provides exact commands and expected checks, but does not execute those Python commands.
 - When behavior/scope/commands/metrics change, update related docs in the same work unit:
   - `README.md`
   - `docs/*` (scorecard, schema, relations, regression, stubs, summaries)
   - `AGENTS.md` conventions when policy changes
+
+## Behavioral Execution Principles
+
+The project follows Karpathy-inspired behavioral guidelines for coding-agent execution.
+
+1. Think Before Coding
+   - State assumptions explicitly.
+   - If requirements are ambiguous, surface interpretations instead of silently picking one.
+   - Ask clarifying questions when uncertainty changes implementation risk.
+   - Push back when a clearly simpler and safer approach exists.
+
+2. Simplicity First
+   - Implement the minimum change that solves the requested task.
+   - Avoid speculative abstractions/configurability not requested by the user.
+   - Avoid overengineering and impossible-scenario handling unless required by scope.
+
+3. Surgical Changes
+   - Change only lines directly required for the request.
+   - Do not refactor or reformat unrelated code.
+   - Preserve existing style and structure.
+   - Remove only dead code introduced by your own change; report unrelated dead code separately.
+
+4. Goal-Driven Execution
+   - Define concrete success criteria before implementation for non-trivial tasks.
+   - For multi-step work, map each step to a verification check.
+   - Prefer verifiable outcomes (tests, metrics, checks) over subjective completion.
 
 ## CityGML Version Baseline (Required)
 

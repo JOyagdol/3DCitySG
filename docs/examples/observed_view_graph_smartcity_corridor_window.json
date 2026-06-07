@@ -1,0 +1,101 @@
+{
+  "schema_version": "0.2.0",
+  "metadata": {
+    "query_id": "smartcity_lab_corridor_window_view",
+    "source": "manual_scenario_from_user_image",
+    "note": "Furniture-sparse corridor/lab view with strong wall/floor surfaces, two visible doors on the left wall, a prominent column, and a distant window/glazed opening at the corridor end. Columns are represented as IntBuildingInstallation/installation cues when the world graph has room-level ROOM_INSTALLATION evidence."
+  },
+  "objects": [
+    {
+      "alias": "window_1",
+      "type": "Opening",
+      "category": "window",
+      "weight": 2.0,
+      "confidence": 0.55,
+      "visibility": 0.45
+    },
+    {
+      "alias": "wall_1",
+      "type": "WallSurface",
+      "category": "wall_surface",
+      "weight": 0.75,
+      "confidence": 0.95,
+      "visibility": 1.0
+    },
+    {
+      "alias": "wall_2",
+      "type": "WallSurface",
+      "category": "wall_surface",
+      "weight": 0.75,
+      "confidence": 0.9,
+      "visibility": 0.9
+    },
+    {
+      "alias": "floor_1",
+      "type": "FloorSurface",
+      "category": "floor_surface",
+      "weight": 0.5,
+      "confidence": 0.9,
+      "visibility": 0.95
+    },
+    {
+      "alias": "door_1",
+      "type": "Opening",
+      "category": "door",
+      "weight": 1.0,
+      "confidence": 0.8,
+      "visibility": 0.75
+    },
+    {
+      "alias": "door_2",
+      "type": "Opening",
+      "category": "door",
+      "weight": 1.0,
+      "confidence": 0.7,
+      "visibility": 0.7
+    },
+    {
+      "alias": "column_1",
+      "type": "IntBuildingInstallation",
+      "category": "column",
+      "target_id": "GML_3ertaFEtv3lRc1yAKNmaNM",
+      "weight": 1.5,
+      "confidence": 0.95,
+      "visibility": 0.95
+    }
+  ],
+  "relations": [
+    ["window_1", "HOSTED_BY", "WallSurface"],
+    ["WallSurface", "ADJACENT_SURFACE", "FloorSurface"],
+    ["door_1", "HOSTED_BY", "wall_1"],
+    ["door_2", "HOSTED_BY", "wall_1"],
+    ["door_1", "CONNECTS", "Room"],
+    ["door_2", "CONNECTS", "Room"],
+    ["Room", "ROOM_INSTALLATION", "column_1"]
+  ],
+  "constraints": {
+    "room": {
+      "min_windows": 1,
+      "min_doors": 1,
+      "candidate_limit": 10
+    },
+    "matching": {
+      "min_object_matches": 1,
+      "require_all_required_objects": false,
+      "relation_match_mode": "soft"
+    },
+    "weights": {
+      "object": 1.0,
+      "relation": 1.0,
+      "structural": 0.5,
+      "topology": 0.25,
+      "penalty_missing_required": -2.0
+    }
+  },
+  "query": {
+    "task": "room_localization",
+    "return_top_k": 10,
+    "explain": true,
+    "score_profile": "opening_boundary_view_v1"
+  }
+}

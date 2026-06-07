@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3dcitysg.local/schemas/observed_view_graph.schema.json",
+  "title": "Observed View Graph",
+  "description": "Image-derived observed view graph input for World Graph Retrieval room localization.",
+  "type": "object",
+  "required": ["schema_version", "objects"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Observed view graph schema version.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "default": "0.2.0"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional image/view provenance metadata.",
+      "additionalProperties": true,
+      "properties": {
+        "query_id": {"type": "string"},
+        "image_id": {"type": "string"},
+        "source": {"type": "string"},
+        "created_at": {"type": "string"},
+        "note": {"type": "string"}
+      }
+    },
+    "objects": {
+      "type": "array",
+      "description": "Objects observed from an image or view graph extractor.",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/observed_object"}
+    },
+    "relations": {
+      "type": "array",
+      "description": "Observed relations between object aliases or between an object and a typed world-graph target.",
+      "default": [],
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/observed_relation"},
+          {"$ref": "#/$defs/legacy_relation_tuple"}
+        ]
+      }
+    },
+    "constraints": {
+      "$ref": "#/$defs/constraints"
+    },
+    "query": {
+      "$ref": "#/$defs/query_options"
+    }
+  },
+  "$defs": {
+    "node_type": {
+      "type": "string",
+      "enum": [
+        "Building",
+        "BuildingPart",
+        "Room",
+        "BoundarySurface",
+        "Opening",
+        "Door",
+        "Window",
+        "BuildingInstallation",
+        "IntBuildingInstallation",
+        "BuildingFurniture",
+        "FloorSurface",
+        "WallSurface",
+        "CeilingSurface",
+        "GroundSurface",
+        "RoofSurface",
+        "ClosureSurface"
+      ]
+    },
+    "relation_type": {
+      "type": "string",
+      "enum": [
+        "INSIDE",
+        "CONTAINS",
+        "BOUNDED_BY",
+        "HAS_OPENING",
+        "ROOM_INSTALLATION",
+        "CONNECTS",
+        "HOSTED_BY",
+        "ATTACHED_TO",
+        "ADJACENT_TO",
+        "TOUCHES",
+        "INTERSECTS",
+        "ABOVE",
+        "BELOW",
+        "ADJACENT_SURFACE",
+        "NEAR",
+        "ON_FLOOR"
+      ]
+    },
+    "score_number": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "probability": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "bbox2d": {
+      "type": "array",
+      "description": "Normalized [x_min, y_min, x_max, y_max] image bounding box.",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"type": "number", "minimum": 0.0, "maximum": 1.0}
+    },
+    "observed_object": {
+      "type": "object",
+      "required": ["alias", "category"],
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "type": "string",
+          "description": "Unique object alias inside this observed view graph.",
+          "minLength": 1
+        },
+        "type": {
+          "$ref": "#/$defs/node_type"
+        },
+        "category": {
+          "type": "string",
+          "description": "Normalized object category, e.g. fridge, storage, sofa, table, window, door.",
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "description": "Optional observed/world object id when the image cue is manually aligned to a known world-graph node."
+        },
+        "gml_id": {
+          "type": "string",
+          "description": "Optional CityGML gml:id for a known world-graph node."
+        },
+        "target_id": {
+          "type": "string",
+          "description": "Optional explicit world-graph target node id used for diagnostic or constrained retrieval."
+        },
+        "target_ids": {
+          "type": "array",
+          "description": "Optional list of explicit world-graph target node ids used for diagnostic or constrained retrieval.",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "confidence": {
+          "$ref": "#/$defs/probability",
+          "default": 1.0
+        },
+        "visibility": {
+          "$ref": "#/$defs/probability",
+          "default": 1.0
+        },
+        "weight": {
+          "$ref": "#/$defs/score_number"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "bbox2d": {
+          "$ref": "#/$defs/bbox2d"
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "null"]
+          }
+        }
+      }
+    },
+    "observed_relation": {
+      "type": "object",
+      "required": ["source", "relation", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source object alias or source type token.",
+          "minLength": 1
+        },
+        "relation": {
+          "$ref": "#/$defs/relation_type"
+        },
+        "target": {
+          "type": "string",
+          "description": "Target object alias or target type token.",
+          "minLength": 1
+        },
+        "source_type": {
+          "$ref": "#/$defs/node_type"
+        },
+        "target_type": {
+          "$ref": "#/$defs/node_type"
+        },
+        "confidence": {
+          "$ref": "#/$defs/probability",
+          "default": 1.0
+        },
+        "weight": {
+          "$ref": "#/$defs/score_number",
+          "default": 1.0
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "directional": {
+          "type": "boolean",
+          "default": true
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "null"]
+          }
+        }
+      }
+    },
+    "legacy_relation_tuple": {
+      "type": "array",
+      "description": "Legacy tuple form: [source, relation, target]. Prefer object form for new work.",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {"type": "string", "minLength": 1},
+        {"$ref": "#/$defs/relation_type"},
+        {"type": "string", "minLength": 1}
+      ]
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "room": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min_doors": {"type": "integer", "minimum": 0},
+            "min_windows": {"type": "integer", "minimum": 0},
+            "candidate_limit": {"type": "integer", "minimum": 1}
+          }
+        },
+        "matching": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min_object_matches": {"type": "integer", "minimum": 0},
+            "require_all_required_objects": {"type": "boolean", "default": true},
+            "relation_match_mode": {
+              "type": "string",
+              "enum": ["soft", "hard", "hybrid"],
+              "default": "soft"
+            }
+          }
+        },
+        "weights": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "object": {"type": "number"},
+            "relation": {"type": "number"},
+            "structural": {"type": "number"},
+            "topology": {"type": "number"},
+            "penalty_missing_required": {"type": "number"}
+          }
+        }
+      }
+    },
+    "query_options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "task": {
+          "type": "string",
+          "enum": [
+            "room_localization",
+            "object_context_retrieval",
+            "relation_pattern_search",
+            "room_signature_retrieval"
+          ],
+          "default": "room_localization"
+        },
+        "return_top_k": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10
+        },
+        "explain": {
+          "type": "boolean",
+          "default": true
+        },
+        "score_profile": {
+          "type": "string",
+          "default": "default"
+        }
+      }
+    }
+  }
+}

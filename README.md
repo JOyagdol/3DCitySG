@@ -1,4 +1,4 @@
-# CityGML Semantic-Spatial Scene Graph
+# Representation CityGML Building Models into a Queryable Semantic-Spatial Scene Graph
 
 A Python-based research framework for constructing semantic-spatial scene graphs from CityGML building models.
 
@@ -85,6 +85,11 @@ Targets relation enrichment for:
 - `TOUCHES`
 - `CONNECTS`
 - `INTERSECTS`
+- `HOSTED_BY`
+- `ADJACENT_SURFACE`
+- `ATTACHED_TO`
+- `ABOVE`
+- `BELOW`
 
 Current spatial inference baseline:
 
@@ -92,6 +97,7 @@ Current spatial inference baseline:
 - Pipeline uses `Object -> Polygon -> LinearRing -> Position` coordinates to build per-node bbox
 - Decision order: `INTERSECTS > TOUCHES > ADJACENT_TO`
 - Detailed spec: `docs/spatial_relation_spec_v1.md`
+- Paper-oriented v2 algorithm notes: `docs/spatial_relation_v2_algorithm_notes.md` / `docs/spatial_relation_v2_algorithm_notes_ko.md`
 
 ### Neo4j persistence
 
@@ -453,7 +459,11 @@ src/citygml_sg/
   - `HAS_SURFACE_TYPE` (BoundarySurface->BoundarySurfaceType)
   - `HAS_OPENING` (BoundarySurface->Opening)
   - `HAS_APPEARANCE` / `HAS_SURFACE_DATA` / `APPLIES_TO` (Appearance subgraph)
-  - `CONNECTS` (Opening->Room)
+  - `CONNECTS` (Opening(Door)->Room)
+  - `HOSTED_BY` (Opening->BoundarySurface)
+  - `ADJACENT_SURFACE` (BoundarySurface<->BoundarySurface)
+  - `ATTACHED_TO` (Furniture->BoundarySurface, derived from TOUCHES)
+  - `ABOVE` / `BELOW` (object vertical order: Furniture/Door/Window)
   - `INSIDE` (Furniture->Room)
 - Added geometry subgraph extraction:
   - object -> `HAS_GEOMETRY` -> Polygon

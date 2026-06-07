@@ -67,7 +67,10 @@ def _check_import_summary(
         ("relation_coverage.score", "relation_coverage_min"),
         ("property_coverage.score", "property_coverage_min"),
         ("spatial_coverage.score", "spatial_coverage_min"),
+        ("spatial_plausible_coverage.score", "spatial_plausible_coverage_min"),
+        ("spatial_density.score", "spatial_density_min"),
         ("spatial_precision_sanity.score", "spatial_precision_sanity_min"),
+        ("spatial_quality.score", "spatial_quality_min"),
     ]
 
     def _read_nested(obj: dict[str, Any], dotted: str) -> float:

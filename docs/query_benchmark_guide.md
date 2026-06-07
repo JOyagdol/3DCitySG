@@ -6,6 +6,11 @@ Command source of truth:
 
 1. `docs/command_cheatsheet.md`
 
+Room-localization / view-graph matching query scenarios:
+
+1. `docs/room_localization_query_scenarios.md`
+2. Latest paper-oriented result notes: `docs/room_localization_query_results.md`
+
 ## 1. Goal
 
 1. Validate whether the graph supports interpretable spatial querying.
@@ -79,7 +84,7 @@ python -m citygml_sg.app.cli benchmark --config configs/default.yaml --output da
 | Query ID | Goal | Cypher Summary | Result Count | Avg Time (ms) | P95 (ms) | Note |
 |---|---|---|---:|---:|---:|---|
 | B1 | Baseline total nodes | `MATCH (n) RETURN count(n)` | 0 | 0.0 | 0.0 | should be >0 on populated DB |
-| H4 | Opening-room connectivity | `MATCH (:Opening)-[:CONNECTS]->(:Room)` | 0 | 0.0 | 0.0 | 0 can be valid per dataset |
+| H4 | Door-room connectivity | `MATCH (:Opening {opening_type: 'Door'})-[:CONNECTS]->(:Room)` | 0 | 0.0 | 0.0 | 0 can be valid per dataset |
 | S5 | Room-to-room pairs (path-like) | `Room <-INTERIOR_ROOM- BuildingPart -INTERIOR_ROOM-> Room` | 0 | 0.0 | 0.0 | human-style navigation proxy |
 
 Output files:

@@ -47,6 +47,15 @@ MINIMAL_GML_WITH_SPATIAL_PAIRS = """<?xml version="1.0" encoding="UTF-8"?>
                 </bldg:Window>
               </bldg:opening>
             </bldg:WallSurface>
+            <bldg:FloorSurface gml:id="fs1">
+              <gml:Polygon gml:id="p_fs1">
+                <gml:exterior>
+                  <gml:LinearRing>
+                    <gml:posList>0 0 0 5 0 0 5 4 0 0 4 0 0 0 0</gml:posList>
+                  </gml:LinearRing>
+                </gml:exterior>
+              </gml:Polygon>
+            </bldg:FloorSurface>
           </bldg:boundedBy>
           <bldg:interiorFurniture>
             <bldg:BuildingFurniture gml:id="f1">
@@ -76,6 +85,17 @@ MINIMAL_GML_WITH_SPATIAL_PAIRS = """<?xml version="1.0" encoding="UTF-8"?>
                 <gml:exterior>
                   <gml:LinearRing>
                     <gml:posList>3 0 0 4 0 0 4 0.6 1 3 0.6 1 3 0 0</gml:posList>
+                  </gml:LinearRing>
+                </gml:exterior>
+              </gml:Polygon>
+            </bldg:BuildingFurniture>
+          </bldg:interiorFurniture>
+          <bldg:interiorFurniture>
+            <bldg:BuildingFurniture gml:id="f4">
+              <gml:Polygon gml:id="p_f4">
+                <gml:exterior>
+                  <gml:LinearRing>
+                    <gml:posList>3.2 0 2 4.2 0 2 4.2 0.6 3 3.2 0.6 3 3.2 0 2</gml:posList>
                   </gml:LinearRing>
                 </gml:exterior>
               </gml:Polygon>
@@ -160,6 +180,43 @@ MINIMAL_GML_WITH_NEGATIVE_SPATIAL = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+MINIMAL_GML_WITH_BOUNDARY_GAP = """<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel
+    xmlns:core="http://www.opengis.net/citygml/2.0"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:bldg="http://www.opengis.net/citygml/building/2.0">
+  <core:cityObjectMember>
+    <bldg:Building gml:id="b_gap">
+      <bldg:interiorRoom>
+        <bldg:Room gml:id="r_gap">
+          <bldg:boundedBy>
+            <bldg:FloorSurface gml:id="fs_gap_1">
+              <gml:Polygon gml:id="p_fs_gap_1">
+                <gml:exterior>
+                  <gml:LinearRing>
+                    <gml:posList>0 0 0 2 0 0 2 2 0 0 2 0 0 0 0</gml:posList>
+                  </gml:LinearRing>
+                </gml:exterior>
+              </gml:Polygon>
+            </bldg:FloorSurface>
+            <bldg:FloorSurface gml:id="fs_gap_2">
+              <gml:Polygon gml:id="p_fs_gap_2">
+                <gml:exterior>
+                  <gml:LinearRing>
+                    <gml:posList>2.03 0 0 4.03 0 0 4.03 2 0 2.03 2 0 2.03 0 0</gml:posList>
+                  </gml:LinearRing>
+                </gml:exterior>
+              </gml:Polygon>
+            </bldg:FloorSurface>
+          </bldg:boundedBy>
+        </bldg:Room>
+      </bldg:interiorRoom>
+    </bldg:Building>
+  </core:cityObjectMember>
+</core:CityModel>
+"""
+
+
 def _run_pipeline(xml_text: str, tmp_path: Path) -> dict:
     input_path = tmp_path / "input.gml"
     output_path = tmp_path / "output.json"
@@ -208,6 +265,45 @@ def test_adds_furniture_to_boundary_surface_bidirectional_relation(tmp_path: Pat
 
     assert ("f1", "TOUCHES", "ws1") in edge_set
     assert ("ws1", "TOUCHES", "f1") in edge_set
+
+
+def test_adds_opening_hosted_by_boundary_surface_relation(tmp_path: Path) -> None:
+    payload = _run_pipeline(MINIMAL_GML_WITH_SPATIAL_PAIRS, tmp_path)
+    edge_set = {(edge["source_id"], edge["relation"], edge["target_id"]) for edge in payload["edges"]}
+
+    assert ("o1", "HOSTED_BY", "ws1") in edge_set
+    assert ("o2", "HOSTED_BY", "ws1") in edge_set
+
+
+def test_adds_boundary_surface_adjacency_relation(tmp_path: Path) -> None:
+    payload = _run_pipeline(MINIMAL_GML_WITH_SPATIAL_PAIRS, tmp_path)
+    edge_set = {(edge["source_id"], edge["relation"], edge["target_id"]) for edge in payload["edges"]}
+
+    assert ("ws1", "ADJACENT_SURFACE", "fs1") in edge_set
+    assert ("fs1", "ADJACENT_SURFACE", "ws1") in edge_set
+
+
+def test_does_not_add_boundary_surface_adjacency_without_shared_edge(tmp_path: Path) -> None:
+    payload = _run_pipeline(MINIMAL_GML_WITH_BOUNDARY_GAP, tmp_path)
+    edge_set = {(edge["source_id"], edge["relation"], edge["target_id"]) for edge in payload["edges"]}
+
+    assert ("fs_gap_1", "ADJACENT_SURFACE", "fs_gap_2") not in edge_set
+    assert ("fs_gap_2", "ADJACENT_SURFACE", "fs_gap_1") not in edge_set
+
+
+def test_adds_vertical_above_below_relation_for_objects(tmp_path: Path) -> None:
+    payload = _run_pipeline(MINIMAL_GML_WITH_SPATIAL_PAIRS, tmp_path)
+    edge_set = {(edge["source_id"], edge["relation"], edge["target_id"]) for edge in payload["edges"]}
+
+    assert ("f4", "ABOVE", "f2") in edge_set
+    assert ("f2", "BELOW", "f4") in edge_set
+
+
+def test_adds_furniture_attached_to_boundary_surface_relation(tmp_path: Path) -> None:
+    payload = _run_pipeline(MINIMAL_GML_WITH_SPATIAL_PAIRS, tmp_path)
+    edge_set = {(edge["source_id"], edge["relation"], edge["target_id"]) for edge in payload["edges"]}
+
+    assert ("f1", "ATTACHED_TO", "ws1") in edge_set
 
 
 def test_does_not_add_spatial_relation_for_far_furniture_and_openings(tmp_path: Path) -> None:

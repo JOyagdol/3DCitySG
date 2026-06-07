@@ -6,12 +6,24 @@ Goal: define stable implementation/validation criteria for core features.
 Command source of truth:
 1. `docs/command_cheatsheet.md`
 
+Detailed spatial-relation v2 algorithm notes:
+1. `docs/spatial_relation_v2_algorithm_notes.md`
+2. `docs/spatial_relation_v2_algorithm_notes_ko.md`
+
 ## 1. Spatial Threshold Parameters (`spatial.*`)
 
 ### 1.1 Goal
 
 1. Tune relation sensitivity (`TOUCHES`, `ADJACENT_TO`, `INTERSECTS`) per dataset.
 2. Keep experiments reproducible without code changes.
+
+Current v2 relation scope (implemented in pipeline):
+1. `OBJECT --ABOVE/BELOW--> OBJECT` (object scope: `BuildingFurniture`, `Door`, `Window`)
+2. `OPENING --HOSTED_BY--> BOUNDARY_SURFACE(subtype)`
+3. `BOUNDARY_SURFACE --ADJACENT_SURFACE--> BOUNDARY_SURFACE`
+4. `BuildingFurniture --ATTACHED_TO/TOUCHES--> BOUNDARY_SURFACE(subtype)`
+5. keep `Door -> Room (CONNECTS)` as source relation
+6. exclude `ROOM --SHARES_DOOR_WITH--> ROOM` from v2 core graph
 
 ### 1.2 Configuration
 
@@ -49,17 +61,34 @@ Parameter meaning:
 In `summary.scorecard`:
 
 1. `spatial_coverage`
-2. `spatial_precision_sanity`
-3. `spatial_pair_stats`
-4. `spatial_pair_family_scores`
+2. `spatial_plausible_coverage`
+3. `spatial_density`
+4. `spatial_precision_sanity`
+5. `spatial_quality`
+6. `spatial_pair_stats`
+7. `spatial_pair_family_scores`
+8. `spatial_family_normalized_coverage`
+9. `spatial_coverage_policy`
 
 Source of truth for formula/definition: `docs/evaluation_scorecard.md`.
+
+Final v2 interpretation policy:
+1. `spatial_coverage`: raw hit-rate with base denominator (`expected_total`)
+2. `spatial_plausible_coverage`: supplementary hit-rate with plausible denominator (`plausible_expected_total`)
+3. `spatial_density`: weighted family-normalized density score
+4. `spatial_quality` / `spatial_precision_sanity`: quality sanity axis
 
 ### 2.3 Validation
 
 1. Ensure all spatial scorecard fields are present.
-2. Monitor `pair_conflict_count` and keep it near 0.
-3. Check pair-family distribution against domain expectations.
+2. Read density and quality separately:
+   - raw coverage: `spatial_coverage` (`actual_total/expected_total`)
+   - plausible coverage: `spatial_plausible_coverage` (`actual_total/plausible_expected_total`)
+   - normalized density: `spatial_density` (weighted family-normalized)
+   - quality: `spatial_precision_sanity`, `spatial_quality`
+3. Monitor `pair_conflict_count` and keep it near 0.
+4. Check pair-family distribution and weighted family score against domain expectations.
+5. Verify zero-candidate families are reported as `N/A` (`null`) rather than `100`.
 
 ## 3. Regression Testing (Including Negative Cases)
 

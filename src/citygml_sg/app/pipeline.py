@@ -59,6 +59,7 @@ BOUNDARY_SURFACE_TAGS = {
 }
 OPENING_TAGS = {"Door", "Window"}
 SPATIAL_OPENING_TYPES = {"Door", "Window"}
+CONNECTS_OPENING_TYPES = {"Door"}
 BOUNDARY_SURFACE_TYPE_NODE_PREFIX = "boundary_surface_type::"
 APPEARANCE_FALLBACK_OWNER_PRIORITY: tuple[NodeType, ...] = (
     NodeType.CITY_OBJECT_MEMBER,
@@ -134,6 +135,11 @@ SPATIAL_RELATIONS: set[RelationType] = {
     RelationType.ADJACENT_TO,
     RelationType.TOUCHES,
     RelationType.INTERSECTS,
+    RelationType.ABOVE,
+    RelationType.BELOW,
+    RelationType.ADJACENT_SURFACE,
+    RelationType.ATTACHED_TO,
+    RelationType.HOSTED_BY,
 }
 SPATIAL_INFERRED_RELATIONS: set[RelationType] = {
     RelationType.ADJACENT_TO,
@@ -176,9 +182,32 @@ SCORE_NODE_WEIGHT = 0.40
 SCORE_RELATION_WEIGHT = 0.30
 SCORE_PROPERTY_WEIGHT = 0.30
 SCORE_CRITERIA_COMMENT = "overall=0.40*node + 0.30*relation + 0.30*property"
+SPATIAL_FAMILY_WEIGHTS: dict[str, float] = {
+    "furniture_boundary_surface": 0.30,
+    "furniture_opening": 0.25,
+    "furniture_furniture": 0.25,
+    "opening_room_connects": 0.20,
+}
 DEFAULT_SPATIAL_TOUCH_EPSILON = 0.05
 DEFAULT_SPATIAL_ADJACENT_EPSILON = 0.50
 DEFAULT_SPATIAL_INTERSECTION_EPSILON = 1e-6
+DEFAULT_ATTACHMENT_VERTICAL_GAP_EPSILON = 0.10
+DEFAULT_BOUNDARY_LAYER_GAP_EPSILON = 0.25
+DEFAULT_BOUNDARY_LAYER_OVERLAP_RATIO = 0.85
+VERTICAL_RELATION_OBJECT_TYPES: set[NodeType] = {NodeType.BUILDING_FURNITURE, NodeType.OPENING}
+FLOOR_LIKE_SURFACE_TYPES: set[str] = {"FloorSurface", "OuterFloorSurface", "GroundSurface"}
+WALL_LIKE_SURFACE_TYPES: set[str] = {"WallSurface", "InteriorWallSurface"}
+FLOOR_FINISH_KEYWORDS: tuple[str, ...] = ("마감", "마루", "타일", "tile", "finish", "finishing")
+FLOOR_SUBSTRATE_KEYWORDS: tuple[str, ...] = ("단열", "insulation", "foam", "substrate")
+DEFAULT_TOUCH_MIN_CONTACT_AREA = 0.01
+DEFAULT_TOUCH_MIN_CONTACT_LENGTH = 0.10
+DEFAULT_ADJACENT_SURFACE_MIN_SHARED_EDGE_LENGTH = 0.10
+DEFAULT_ADJACENT_SURFACE_EDGE_LINE_TOLERANCE = 0.01
+EXTERNAL_FLAG_KEYS: tuple[str, ...] = (
+    "is_external",
+    "attr_pset_wallcommon_isexternal",
+    "attr_pset_buildingelementproxycommon_isexternal",
+)
 
 PIPELINE_STAGE_ORDER: tuple[str, ...] = (
     "parse_xml",
@@ -253,7 +282,7 @@ BENCHMARK_QUERY_SET: tuple[tuple[str, str, str], ...] = (
     (
         "H4",
         "hard__opening_room_connects",
-        "MATCH (:Opening)-[:CONNECTS]->(:Room) RETURN count(*) AS count",
+        "MATCH (:Opening {opening_type: 'Door'})-[:CONNECTS]->(:Room) RETURN count(*) AS count",
     ),
     (
         "H5",
@@ -1095,10 +1124,37 @@ def _build_semantic_edges(
             boundary = _nearest_ancestor(record.element, parent_map, by_element, {NodeType.BOUNDARY_SURFACE})
             if boundary:
                 _add_edge_if_valid(graph, create_edge(boundary.node_id, record.node_id, RelationType.HAS_OPENING))
+                _add_edge_if_valid(
+                    graph,
+                    create_edge(
+                        record.node_id,
+                        boundary.node_id,
+                        RelationType.HOSTED_BY,
+                        method="semantic_has_opening_v1",
+                        source="semantic_boundary_opening",
+                        confidence=1.0,
+                        evidence_score=1.0,
+                        computed_at=datetime.now(timezone.utc).isoformat(),
+                        boundary_surface_type=str(boundary.properties.get("surface_type") or "BoundarySurface"),
+                    ),
+                )
 
             room = _nearest_ancestor(record.element, parent_map, by_element, {NodeType.ROOM})
-            if room:
-                _add_edge_if_valid(graph, create_edge(record.node_id, room.node_id, RelationType.CONNECTS))
+            opening_node = graph.nodes.get(record.node_id)
+            if room and opening_node is not None and _is_connects_opening(opening_node):
+                _add_edge_if_valid(
+                    graph,
+                    create_edge(
+                        record.node_id,
+                        room.node_id,
+                        RelationType.CONNECTS,
+                        method="semantic_ancestor_room_v1",
+                        source="semantic_opening_room",
+                        confidence=1.0,
+                        evidence_score=1.0,
+                        computed_at=datetime.now(timezone.utc).isoformat(),
+                    ),
+                )
 
         elif record.node_type == NodeType.BUILDING_FURNITURE:
             parent = _nearest_ancestor(record.element, parent_map, by_element, {NodeType.ROOM})
@@ -1147,6 +1203,33 @@ def _node_position_points(
     return points
 
 
+def _node_polygon_rings(
+    node_id: str,
+    *,
+    nodes_by_id: dict[str, object],
+    has_geometry_index: dict[str, list[str]],
+    has_ring_index: dict[str, list[str]],
+    has_pos_index: dict[str, list[str]],
+) -> list[list[Point3D]]:
+    rings: list[list[Point3D]] = []
+    for polygon_id in has_geometry_index.get(node_id, []):
+        for ring_id in has_ring_index.get(polygon_id, []):
+            ring_points: list[Point3D] = []
+            for pos_id in has_pos_index.get(ring_id, []):
+                pos_node = nodes_by_id.get(pos_id)
+                if pos_node is None:
+                    continue
+                x = pos_node.properties.get("x")
+                y = pos_node.properties.get("y")
+                z = pos_node.properties.get("z")
+                if not isinstance(x, (int, float)) or not isinstance(y, (int, float)) or not isinstance(z, (int, float)):
+                    continue
+                ring_points.append(Point3D(float(x), float(y), float(z)))
+            if len(ring_points) >= 2:
+                rings.append(ring_points)
+    return rings
+
+
 def _build_node_bboxes(graph: SceneGraph, target_types: set[NodeType]) -> dict[str, BBox]:
     has_geometry_index = _edge_index(graph, RelationType.HAS_GEOMETRY)
     has_ring_index = _edge_index(graph, RelationType.HAS_RING)
@@ -1170,15 +1253,65 @@ def _build_node_bboxes(graph: SceneGraph, target_types: set[NodeType]) -> dict[s
     return node_bboxes
 
 
+def _build_node_points(graph: SceneGraph, target_types: set[NodeType]) -> dict[str, list[Point3D]]:
+    has_geometry_index = _edge_index(graph, RelationType.HAS_GEOMETRY)
+    has_ring_index = _edge_index(graph, RelationType.HAS_RING)
+    has_pos_index = _edge_index(graph, RelationType.HAS_POS)
+    nodes_by_id = graph.nodes
+
+    node_points: dict[str, list[Point3D]] = {}
+    for node_id, node in nodes_by_id.items():
+        if node.node_type not in target_types:
+            continue
+        points = _node_position_points(
+            node_id,
+            nodes_by_id=nodes_by_id,
+            has_geometry_index=has_geometry_index,
+            has_ring_index=has_ring_index,
+            has_pos_index=has_pos_index,
+        )
+        if points:
+            node_points[node_id] = points
+    return node_points
+
+
+def _build_node_polygon_rings(graph: SceneGraph, target_types: set[NodeType]) -> dict[str, list[list[Point3D]]]:
+    has_geometry_index = _edge_index(graph, RelationType.HAS_GEOMETRY)
+    has_ring_index = _edge_index(graph, RelationType.HAS_RING)
+    has_pos_index = _edge_index(graph, RelationType.HAS_POS)
+    nodes_by_id = graph.nodes
+
+    node_rings: dict[str, list[list[Point3D]]] = {}
+    for node_id, node in nodes_by_id.items():
+        if node.node_type not in target_types:
+            continue
+        rings = _node_polygon_rings(
+            node_id,
+            nodes_by_id=nodes_by_id,
+            has_geometry_index=has_geometry_index,
+            has_ring_index=has_ring_index,
+            has_pos_index=has_pos_index,
+        )
+        if rings:
+            node_rings[node_id] = rings
+    return node_rings
+
+
 def _add_spatial_edges_for_pairs(
     graph: SceneGraph,
     source_ids: list[str],
     target_ids: list[str],
     *,
+    nodes_by_id: dict[str, Node],
     node_bboxes: dict[str, BBox],
+    node_points: dict[str, list[Point3D]],
     touch_epsilon: float,
     adjacent_epsilon: float,
     intersection_epsilon: float,
+    use_two_stage_refinement: bool,
+    room_boundary_ids: list[str] | None = None,
+    touch_min_contact_area: float = DEFAULT_TOUCH_MIN_CONTACT_AREA,
+    touch_min_contact_length: float = DEFAULT_TOUCH_MIN_CONTACT_LENGTH,
 ) -> int:
     added = 0
     for source_id in source_ids:
@@ -1195,14 +1328,565 @@ def _add_spatial_edges_for_pairs(
                 touch_epsilon=touch_epsilon,
                 adjacent_epsilon=adjacent_epsilon,
                 intersection_epsilon=intersection_epsilon,
+                first_points=node_points.get(source_id),
+                second_points=node_points.get(target_id),
+                use_two_stage_refinement=use_two_stage_refinement,
+                touch_min_contact_area=touch_min_contact_area,
+                touch_min_contact_length=touch_min_contact_length,
             )
             if relation is None:
                 continue
+            if relation == RelationType.ADJACENT_TO and room_boundary_ids:
+                source_node = nodes_by_id.get(source_id)
+                target_node = nodes_by_id.get(target_id)
+                if source_node is None or target_node is None:
+                    continue
+                if (
+                    source_node.node_type != NodeType.BOUNDARY_SURFACE
+                    and target_node.node_type != NodeType.BOUNDARY_SURFACE
+                    and _has_boundary_occlusion_between(
+                        source_id,
+                        target_id,
+                        source_bbox,
+                        target_bbox,
+                        room_boundary_ids=room_boundary_ids,
+                        node_bboxes=node_bboxes,
+                        touch_epsilon=touch_epsilon,
+                    )
+                ):
+                    continue
             before = len(graph.edges)
             _add_edge_if_valid(graph, create_edge(source_id, target_id, relation, **props))
             if len(graph.edges) > before:
                 added += 1
     return added
+
+
+def _bbox_axis_span(bbox: BBox, axis: int) -> float:
+    if axis == 0:
+        return float(bbox.max_point.x - bbox.min_point.x)
+    if axis == 1:
+        return float(bbox.max_point.y - bbox.min_point.y)
+    return float(bbox.max_point.z - bbox.min_point.z)
+
+
+def _bbox_axis_center(bbox: BBox, axis: int) -> float:
+    if axis == 0:
+        return float((bbox.min_point.x + bbox.max_point.x) / 2.0)
+    if axis == 1:
+        return float((bbox.min_point.y + bbox.max_point.y) / 2.0)
+    return float((bbox.min_point.z + bbox.max_point.z) / 2.0)
+
+
+def _bbox_axis_overlap(bbox_a: BBox, bbox_b: BBox, axis: int) -> float:
+    if axis == 0:
+        return float(min(bbox_a.max_point.x, bbox_b.max_point.x) - max(bbox_a.min_point.x, bbox_b.min_point.x))
+    if axis == 1:
+        return float(min(bbox_a.max_point.y, bbox_b.max_point.y) - max(bbox_a.min_point.y, bbox_b.min_point.y))
+    return float(min(bbox_a.max_point.z, bbox_b.max_point.z) - max(bbox_a.min_point.z, bbox_b.min_point.z))
+
+
+def _point_distance(first: Point3D, second: Point3D) -> float:
+    dx = first.x - second.x
+    dy = first.y - second.y
+    dz = first.z - second.z
+    return (dx * dx + dy * dy + dz * dz) ** 0.5
+
+
+def _segment_points(ring: list[Point3D]) -> Iterator[tuple[Point3D, Point3D]]:
+    if len(ring) < 2:
+        return
+    for index in range(len(ring) - 1):
+        if _point_distance(ring[index], ring[index + 1]) > 1e-12:
+            yield ring[index], ring[index + 1]
+    if _point_distance(ring[0], ring[-1]) > 1e-12:
+        yield ring[-1], ring[0]
+
+
+def _segment_shared_length(
+    first_start: Point3D,
+    first_end: Point3D,
+    second_start: Point3D,
+    second_end: Point3D,
+    *,
+    line_tolerance: float,
+) -> float:
+    ux = first_end.x - first_start.x
+    uy = first_end.y - first_start.y
+    uz = first_end.z - first_start.z
+    vx = second_end.x - second_start.x
+    vy = second_end.y - second_start.y
+    vz = second_end.z - second_start.z
+    first_length = (ux * ux + uy * uy + uz * uz) ** 0.5
+    second_length = (vx * vx + vy * vy + vz * vz) ** 0.5
+    if first_length <= 1e-12 or second_length <= 1e-12:
+        return 0.0
+
+    cross_uv_x = uy * vz - uz * vy
+    cross_uv_y = uz * vx - ux * vz
+    cross_uv_z = ux * vy - uy * vx
+    parallel_error = (cross_uv_x * cross_uv_x + cross_uv_y * cross_uv_y + cross_uv_z * cross_uv_z) ** 0.5
+    if parallel_error > line_tolerance * first_length * second_length:
+        return 0.0
+
+    dir_x = ux / first_length
+    dir_y = uy / first_length
+    dir_z = uz / first_length
+
+    def point_line_distance(point: Point3D) -> float:
+        wx = point.x - first_start.x
+        wy = point.y - first_start.y
+        wz = point.z - first_start.z
+        cross_x = wy * dir_z - wz * dir_y
+        cross_y = wz * dir_x - wx * dir_z
+        cross_z = wx * dir_y - wy * dir_x
+        return (cross_x * cross_x + cross_y * cross_y + cross_z * cross_z) ** 0.5
+
+    if point_line_distance(second_start) > line_tolerance or point_line_distance(second_end) > line_tolerance:
+        return 0.0
+
+    def project(point: Point3D) -> float:
+        return (
+            (point.x - first_start.x) * dir_x
+            + (point.y - first_start.y) * dir_y
+            + (point.z - first_start.z) * dir_z
+        )
+
+    first_min, first_max = 0.0, first_length
+    second_a = project(second_start)
+    second_b = project(second_end)
+    second_min = min(second_a, second_b)
+    second_max = max(second_a, second_b)
+    return max(0.0, min(first_max, second_max) - max(first_min, second_min))
+
+
+def _boundary_shared_edge_length(
+    first_rings: list[list[Point3D]] | None,
+    second_rings: list[list[Point3D]] | None,
+    *,
+    line_tolerance: float,
+) -> float:
+    if not first_rings or not second_rings:
+        return 0.0
+    max_shared_length = 0.0
+    for first_ring in first_rings:
+        for first_start, first_end in _segment_points(first_ring):
+            for second_ring in second_rings:
+                for second_start, second_end in _segment_points(second_ring):
+                    max_shared_length = max(
+                        max_shared_length,
+                        _segment_shared_length(
+                            first_start,
+                            first_end,
+                            second_start,
+                            second_end,
+                            line_tolerance=line_tolerance,
+                        ),
+                    )
+    return max_shared_length
+
+
+def _boundary_plane_axis(bbox: BBox) -> int:
+    spans = [_bbox_axis_span(bbox, 0), _bbox_axis_span(bbox, 1), _bbox_axis_span(bbox, 2)]
+    min_axis = 0
+    min_value = spans[0]
+    for axis, span in enumerate(spans[1:], start=1):
+        if span < min_value:
+            min_axis = axis
+            min_value = span
+    return min_axis
+
+
+def _boundary_projected_area(bbox: BBox, normal_axis: int) -> float:
+    tangent_axes = [axis for axis in (0, 1, 2) if axis != normal_axis]
+    return max(_bbox_axis_span(bbox, tangent_axes[0]), 0.0) * max(_bbox_axis_span(bbox, tangent_axes[1]), 0.0)
+
+
+def _node_keyword_text(node: Node) -> str:
+    values: list[str] = []
+    for key in (
+        "gml_name",
+        "attr_ifc_object_type",
+        "attr_identity_data_type_name",
+        "attr_other_family_and_type",
+        "attr_other_type",
+        "attr_materials_and_finishes_structural_material",
+    ):
+        value = node.properties.get(key)
+        if value is not None:
+            values.append(str(value))
+    return " ".join(values).lower()
+
+
+def _floor_finish_priority(node: Node) -> float:
+    text = _node_keyword_text(node)
+    priority = 0.0
+    if str(node.properties.get("attr_is_walkable") or "").lower() == "true":
+        priority += 1.0
+    if any(keyword in text for keyword in FLOOR_FINISH_KEYWORDS):
+        priority += 2.0
+    if any(keyword in text for keyword in FLOOR_SUBSTRATE_KEYWORDS):
+        priority -= 3.0
+    return priority
+
+
+def _boundary_representation_score(
+    node: Node,
+    bbox: BBox,
+    *,
+    surface_type: str,
+    normal_axis: int,
+) -> tuple[float, float, float]:
+    projected_area = _boundary_projected_area(bbox, normal_axis)
+    if surface_type in FLOOR_LIKE_SURFACE_TYPES:
+        # Furniture should attach to the usable top finish, not lower insulation/slab layers.
+        return (round(float(bbox.max_point.z), 6), _floor_finish_priority(node), projected_area)
+    return (projected_area, 0.0, 0.0)
+
+
+def _boundaries_are_layered_duplicates(
+    first_bbox: BBox,
+    second_bbox: BBox,
+    *,
+    normal_axis: int,
+    gap_epsilon: float,
+    overlap_ratio_threshold: float,
+) -> bool:
+    normal_gap = abs(_bbox_axis_center(first_bbox, normal_axis) - _bbox_axis_center(second_bbox, normal_axis))
+    if normal_gap > gap_epsilon:
+        return False
+
+    tangent_axes = [axis for axis in (0, 1, 2) if axis != normal_axis]
+    for axis in tangent_axes:
+        overlap = _bbox_axis_overlap(first_bbox, second_bbox, axis)
+        if overlap <= 0.0:
+            return False
+        min_span = min(_bbox_axis_span(first_bbox, axis), _bbox_axis_span(second_bbox, axis))
+        if min_span <= 0.0:
+            return False
+        overlap_ratio = overlap / min_span
+        if overlap_ratio < overlap_ratio_threshold:
+            return False
+    return True
+
+
+def _collapse_layered_boundary_ids(
+    boundary_ids: set[str],
+    *,
+    nodes_by_id: dict[str, Node],
+    boundary_bboxes: dict[str, BBox],
+) -> list[str]:
+    groups: list[dict[str, object]] = []
+    for boundary_id in sorted(boundary_ids):
+        bbox = boundary_bboxes.get(boundary_id)
+        node = nodes_by_id.get(boundary_id)
+        if bbox is None or node is None:
+            continue
+        surface_type = str(node.properties.get("surface_type") or "BoundarySurface")
+        normal_axis = _boundary_plane_axis(bbox)
+        merged = False
+        for group in groups:
+            if group["surface_type"] != surface_type:
+                continue
+            if group["normal_axis"] != normal_axis:
+                continue
+            rep_bbox: BBox = group["rep_bbox"]  # type: ignore[assignment]
+            if not _boundaries_are_layered_duplicates(
+                rep_bbox,
+                bbox,
+                normal_axis=normal_axis,
+                gap_epsilon=DEFAULT_BOUNDARY_LAYER_GAP_EPSILON,
+                overlap_ratio_threshold=DEFAULT_BOUNDARY_LAYER_OVERLAP_RATIO,
+            ):
+                continue
+            candidate_score = _boundary_representation_score(
+                node,
+                bbox,
+                surface_type=surface_type,
+                normal_axis=normal_axis,
+            )
+            rep_score: tuple[float, float, float] = group["rep_score"]  # type: ignore[assignment]
+            if candidate_score > rep_score:
+                group["rep_id"] = boundary_id
+                group["rep_bbox"] = bbox
+                group["rep_score"] = candidate_score
+            merged = True
+            break
+
+        if merged:
+            continue
+
+        groups.append(
+            {
+                "surface_type": surface_type,
+                "normal_axis": normal_axis,
+                "rep_id": boundary_id,
+                "rep_bbox": bbox,
+                "rep_score": _boundary_representation_score(
+                    node,
+                    bbox,
+                    surface_type=surface_type,
+                    normal_axis=normal_axis,
+                ),
+            }
+        )
+
+    return sorted(str(group["rep_id"]) for group in groups)
+
+
+def _build_room_spatial_scope(
+    graph: SceneGraph,
+    *,
+    include_container_fallback: bool,
+    collapse_layered_fallback: bool = False,
+) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, list[str]], dict[str, int]]:
+    """Build room-scoped furniture/boundary/opening maps.
+
+    When include_container_fallback is True, rooms without direct BOUNDED_BY links
+    inherit boundary surfaces from their parent BuildingPart/Building containers.
+    """
+    nodes_by_id = graph.nodes
+    inside_index = _edge_index(graph, RelationType.INSIDE)  # furniture -> room
+    bounded_by_index = _edge_index(graph, RelationType.BOUNDED_BY)  # room|building|buildingpart -> boundary surface
+    has_opening_index = _edge_index(graph, RelationType.HAS_OPENING)  # boundary surface -> opening
+
+    room_to_furniture: dict[str, list[str]] = defaultdict(list)
+    for furniture_id, room_ids in inside_index.items():
+        furniture_node = nodes_by_id.get(furniture_id)
+        if furniture_node is None or furniture_node.node_type != NodeType.BUILDING_FURNITURE:
+            continue
+        for room_id in room_ids:
+            room_node = nodes_by_id.get(room_id)
+            if room_node is None or room_node.node_type != NodeType.ROOM:
+                continue
+            room_to_furniture[room_id].append(furniture_id)
+
+    room_to_boundary: dict[str, list[str]] = defaultdict(list)
+    for room_id, boundary_ids in bounded_by_index.items():
+        room_node = nodes_by_id.get(room_id)
+        if room_node is None or room_node.node_type != NodeType.ROOM:
+            continue
+        for boundary_id in boundary_ids:
+            boundary_node = nodes_by_id.get(boundary_id)
+            if boundary_node is None or boundary_node.node_type != NodeType.BOUNDARY_SURFACE:
+                continue
+            room_to_boundary[room_id].append(boundary_id)
+
+    fallback_room_count = 0
+    fallback_boundary_link_count = 0
+    fallback_boundary_collapsed_link_count = 0
+    fallback_boundary_reduced_link_count = 0
+    if include_container_fallback:
+        boundary_bboxes = _build_node_bboxes(graph, target_types={NodeType.BOUNDARY_SURFACE})
+        room_to_containers: dict[str, set[str]] = defaultdict(set)
+        for edge in graph.edges:
+            if edge.relation not in {RelationType.INTERIOR_ROOM, RelationType.CONTAINS}:
+                continue
+            source_node = nodes_by_id.get(edge.source_id)
+            target_node = nodes_by_id.get(edge.target_id)
+            if source_node is None or target_node is None:
+                continue
+            if target_node.node_type != NodeType.ROOM:
+                continue
+            if source_node.node_type not in {NodeType.BUILDING, NodeType.BUILDING_PART}:
+                continue
+            room_to_containers[edge.target_id].add(edge.source_id)
+
+        all_room_ids = [node_id for node_id, node in nodes_by_id.items() if node.node_type == NodeType.ROOM]
+        for room_id in sorted(all_room_ids):
+            if room_to_boundary.get(room_id):
+                continue
+            fallback_boundary_ids: set[str] = set()
+            for container_id in sorted(room_to_containers.get(room_id, set())):
+                for boundary_id in bounded_by_index.get(container_id, []):
+                    boundary_node = nodes_by_id.get(boundary_id)
+                    if boundary_node is None or boundary_node.node_type != NodeType.BOUNDARY_SURFACE:
+                        continue
+                    fallback_boundary_ids.add(boundary_id)
+            if not fallback_boundary_ids:
+                continue
+            raw_count = len(fallback_boundary_ids)
+            selected_boundary_ids = sorted(fallback_boundary_ids)
+            if collapse_layered_fallback and raw_count > 1:
+                selected_boundary_ids = _collapse_layered_boundary_ids(
+                    fallback_boundary_ids,
+                    nodes_by_id=nodes_by_id,
+                    boundary_bboxes=boundary_bboxes,
+                )
+            room_to_boundary[room_id].extend(selected_boundary_ids)
+            fallback_room_count += 1
+            fallback_boundary_link_count += raw_count
+            fallback_boundary_collapsed_link_count += len(selected_boundary_ids)
+            fallback_boundary_reduced_link_count += max(0, raw_count - len(selected_boundary_ids))
+
+    room_to_opening: dict[str, list[str]] = defaultdict(list)
+    for room_id, boundary_ids in room_to_boundary.items():
+        for boundary_id in boundary_ids:
+            for opening_id in has_opening_index.get(boundary_id, []):
+                opening_node = nodes_by_id.get(opening_id)
+                if opening_node is None or opening_node.node_type != NodeType.OPENING:
+                    continue
+                if not _is_door_or_window_opening(opening_node):
+                    continue
+                room_to_opening[room_id].append(opening_id)
+
+    return (
+        room_to_furniture,
+        room_to_boundary,
+        room_to_opening,
+        {
+            "fallback_room_count": fallback_room_count,
+            "fallback_boundary_link_count": fallback_boundary_link_count,
+            "fallback_boundary_collapsed_link_count": fallback_boundary_collapsed_link_count,
+            "fallback_boundary_reduced_link_count": fallback_boundary_reduced_link_count,
+        },
+    )
+
+
+def _bbox_xy_overlaps(first: BBox, second: BBox, *, intersection_epsilon: float) -> bool:
+    overlap_x = min(first.max_point.x, second.max_point.x) - max(first.min_point.x, second.min_point.x)
+    overlap_y = min(first.max_point.y, second.max_point.y) - max(first.min_point.y, second.min_point.y)
+    return overlap_x >= -intersection_epsilon and overlap_y >= -intersection_epsilon
+
+
+def _bbox_centroid(bbox: BBox) -> Point3D:
+    return Point3D(
+        (bbox.min_point.x + bbox.max_point.x) / 2.0,
+        (bbox.min_point.y + bbox.max_point.y) / 2.0,
+        (bbox.min_point.z + bbox.max_point.z) / 2.0,
+    )
+
+
+def _is_true_like(value: object) -> bool:
+    text = str(value).strip().lower()
+    return text in {"true", "yes", "y", "1"}
+
+
+def _is_external_boundary_surface(node: Node | None) -> bool:
+    if node is None or node.node_type != NodeType.BOUNDARY_SURFACE:
+        return False
+    for key in EXTERNAL_FLAG_KEYS:
+        if key not in node.properties:
+            continue
+        if _is_true_like(node.properties.get(key)):
+            return True
+    return False
+
+
+def _segment_intersects_bbox(
+    start: Point3D,
+    end: Point3D,
+    bbox: BBox,
+    *,
+    expand_epsilon: float = 0.0,
+) -> bool:
+    min_x = float(bbox.min_point.x) - expand_epsilon
+    min_y = float(bbox.min_point.y) - expand_epsilon
+    min_z = float(bbox.min_point.z) - expand_epsilon
+    max_x = float(bbox.max_point.x) + expand_epsilon
+    max_y = float(bbox.max_point.y) + expand_epsilon
+    max_z = float(bbox.max_point.z) + expand_epsilon
+
+    dx = float(end.x - start.x)
+    dy = float(end.y - start.y)
+    dz = float(end.z - start.z)
+
+    t_min = 0.0
+    t_max = 1.0
+    for start_value, delta, min_value, max_value in (
+        (float(start.x), dx, min_x, max_x),
+        (float(start.y), dy, min_y, max_y),
+        (float(start.z), dz, min_z, max_z),
+    ):
+        if abs(delta) < 1e-12:
+            if start_value < min_value or start_value > max_value:
+                return False
+            continue
+        inv = 1.0 / delta
+        t1 = (min_value - start_value) * inv
+        t2 = (max_value - start_value) * inv
+        if t1 > t2:
+            t1, t2 = t2, t1
+        t_min = max(t_min, t1)
+        t_max = min(t_max, t2)
+        if t_min > t_max:
+            return False
+    return True
+
+
+def _has_boundary_occlusion_between(
+    source_id: str,
+    target_id: str,
+    source_bbox: BBox,
+    target_bbox: BBox,
+    *,
+    room_boundary_ids: list[str],
+    node_bboxes: dict[str, BBox],
+    touch_epsilon: float,
+) -> bool:
+    start = _bbox_centroid(source_bbox)
+    end = _bbox_centroid(target_bbox)
+    for boundary_id in room_boundary_ids:
+        if boundary_id == source_id or boundary_id == target_id:
+            continue
+        boundary_bbox = node_bboxes.get(boundary_id)
+        if boundary_bbox is None:
+            continue
+        if _segment_intersects_bbox(start, end, boundary_bbox, expand_epsilon=touch_epsilon):
+            return True
+    return False
+
+
+def _infer_vertical_relation(
+    first: BBox | None,
+    second: BBox | None,
+    *,
+    touch_epsilon: float,
+    intersection_epsilon: float,
+) -> tuple[RelationType | None, dict[str, object]]:
+    if first is None or second is None:
+        return None, {}
+    if not _bbox_xy_overlaps(first, second, intersection_epsilon=intersection_epsilon):
+        return None, {}
+
+    first_bottom = first.min_point.z
+    first_top = first.max_point.z
+    second_bottom = second.min_point.z
+    second_top = second.max_point.z
+
+    if first_bottom >= second_top + touch_epsilon:
+        gap = first_bottom - second_top
+        return (
+            RelationType.ABOVE,
+            {
+                "method": "bbox_vertical_v1",
+                "distance": round(gap, 6),
+                "epsilon_touch": touch_epsilon,
+                "epsilon_adjacent": 0.0,
+                "epsilon_intersection": intersection_epsilon,
+                "confidence": 0.85,
+                "evidence_score": round(max(0.70, 0.90 - min(0.20, gap / 10.0)), 4),
+                "computed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    if second_bottom >= first_top + touch_epsilon:
+        gap = second_bottom - first_top
+        return (
+            RelationType.BELOW,
+            {
+                "method": "bbox_vertical_v1",
+                "distance": round(gap, 6),
+                "epsilon_touch": touch_epsilon,
+                "epsilon_adjacent": 0.0,
+                "epsilon_intersection": intersection_epsilon,
+                "confidence": 0.85,
+                "evidence_score": round(max(0.70, 0.90 - min(0.20, gap / 10.0)), 4),
+                "computed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    return None, {}
 
 
 def _build_spatial_edges(
@@ -1214,51 +1898,24 @@ def _build_spatial_edges(
 ) -> int:
     edge_count_before = len(graph.edges)
     nodes_by_id = graph.nodes
-    inside_index = _edge_index(graph, RelationType.INSIDE)  # furniture -> room
-    bounded_by_index = _edge_index(graph, RelationType.BOUNDED_BY)  # room -> boundary surface
-    connects_index = _edge_index(graph, RelationType.CONNECTS)  # opening -> room
-
-    room_to_furniture: dict[str, list[str]] = defaultdict(list)
-    for furniture_id, room_ids in inside_index.items():
-        if nodes_by_id.get(furniture_id) is None or nodes_by_id[furniture_id].node_type != NodeType.BUILDING_FURNITURE:
-            continue
-        for room_id in room_ids:
-            if nodes_by_id.get(room_id) is None or nodes_by_id[room_id].node_type != NodeType.ROOM:
-                continue
-            room_to_furniture[room_id].append(furniture_id)
-
-    room_to_opening: dict[str, list[str]] = defaultdict(list)
-    for opening_id, room_ids in connects_index.items():
-        opening_node = nodes_by_id.get(opening_id)
-        if opening_node is None or opening_node.node_type != NodeType.OPENING:
-            continue
-        opening_type = str(
-            opening_node.properties.get("opening_type")
-            or opening_node.properties.get("source_tag")
-            or ""
-        )
-        if opening_type not in SPATIAL_OPENING_TYPES:
-            continue
-        for room_id in room_ids:
-            if nodes_by_id.get(room_id) is None or nodes_by_id[room_id].node_type != NodeType.ROOM:
-                continue
-            room_to_opening[room_id].append(opening_id)
-
-    room_to_boundary: dict[str, list[str]] = defaultdict(list)
-    for room_id, boundary_ids in bounded_by_index.items():
-        if nodes_by_id.get(room_id) is None or nodes_by_id[room_id].node_type != NodeType.ROOM:
-            continue
-        room_to_boundary[room_id].extend(
-            [
-                boundary_id
-                for boundary_id in boundary_ids
-                if nodes_by_id.get(boundary_id) is not None
-                and nodes_by_id[boundary_id].node_type == NodeType.BOUNDARY_SURFACE
-            ]
+    room_to_furniture, room_to_boundary, room_to_opening, scope_stats = _build_room_spatial_scope(
+        graph,
+        include_container_fallback=True,
+        collapse_layered_fallback=True,
+    )
+    if scope_stats["fallback_room_count"] > 0:
+        LOGGER.info(
+            "[SpatialScope] room boundary fallback used: rooms=%d raw_links=%d collapsed_links=%d reduced=%d",
+            scope_stats["fallback_room_count"],
+            scope_stats["fallback_boundary_link_count"],
+            scope_stats["fallback_boundary_collapsed_link_count"],
+            scope_stats["fallback_boundary_reduced_link_count"],
         )
 
     target_types = {NodeType.BUILDING_FURNITURE, NodeType.BOUNDARY_SURFACE, NodeType.OPENING}
     node_bboxes = _build_node_bboxes(graph, target_types=target_types)
+    node_points = _build_node_points(graph, target_types=target_types)
+    boundary_polygon_rings = _build_node_polygon_rings(graph, target_types={NodeType.BOUNDARY_SURFACE})
 
     for room_id, furniture_ids in room_to_furniture.items():
         unique_furniture_ids = sorted(set(furniture_ids))
@@ -1272,37 +1929,53 @@ def _build_spatial_edges(
             graph,
             unique_furniture_ids,
             boundary_ids,
+            nodes_by_id=nodes_by_id,
             node_bboxes=node_bboxes,
+            node_points=node_points,
             touch_epsilon=touch_epsilon,
             adjacent_epsilon=adjacent_epsilon,
             intersection_epsilon=intersection_epsilon,
+            use_two_stage_refinement=True,
+            room_boundary_ids=boundary_ids,
         )
         _add_spatial_edges_for_pairs(
             graph,
             boundary_ids,
             unique_furniture_ids,
+            nodes_by_id=nodes_by_id,
             node_bboxes=node_bboxes,
+            node_points=node_points,
             touch_epsilon=touch_epsilon,
             adjacent_epsilon=adjacent_epsilon,
             intersection_epsilon=intersection_epsilon,
+            use_two_stage_refinement=True,
+            room_boundary_ids=boundary_ids,
         )
         _add_spatial_edges_for_pairs(
             graph,
             unique_furniture_ids,
             opening_ids,
+            nodes_by_id=nodes_by_id,
             node_bboxes=node_bboxes,
+            node_points=node_points,
             touch_epsilon=touch_epsilon,
             adjacent_epsilon=adjacent_epsilon,
             intersection_epsilon=intersection_epsilon,
+            use_two_stage_refinement=True,
+            room_boundary_ids=boundary_ids,
         )
         _add_spatial_edges_for_pairs(
             graph,
             opening_ids,
             unique_furniture_ids,
+            nodes_by_id=nodes_by_id,
             node_bboxes=node_bboxes,
+            node_points=node_points,
             touch_epsilon=touch_epsilon,
             adjacent_epsilon=adjacent_epsilon,
             intersection_epsilon=intersection_epsilon,
+            use_two_stage_refinement=True,
+            room_boundary_ids=boundary_ids,
         )
 
         for i in range(len(unique_furniture_ids)):
@@ -1313,20 +1986,131 @@ def _build_spatial_edges(
                     graph,
                     [first_id],
                     [second_id],
+                    nodes_by_id=nodes_by_id,
                     node_bboxes=node_bboxes,
+                    node_points=node_points,
                     touch_epsilon=touch_epsilon,
                     adjacent_epsilon=adjacent_epsilon,
                     intersection_epsilon=intersection_epsilon,
+                    use_two_stage_refinement=True,
+                    room_boundary_ids=boundary_ids,
                 )
                 _add_spatial_edges_for_pairs(
                     graph,
                     [second_id],
                     [first_id],
+                    nodes_by_id=nodes_by_id,
                     node_bboxes=node_bboxes,
+                    node_points=node_points,
                     touch_epsilon=touch_epsilon,
                     adjacent_epsilon=adjacent_epsilon,
                     intersection_epsilon=intersection_epsilon,
+                    use_two_stage_refinement=True,
+                    room_boundary_ids=boundary_ids,
                 )
+
+    processed_boundary_pairs: set[tuple[str, str]] = set()
+    for boundary_ids in room_to_boundary.values():
+        unique_boundary_ids = sorted(set(boundary_ids))
+        for i in range(len(unique_boundary_ids)):
+            for j in range(i + 1, len(unique_boundary_ids)):
+                first_id = unique_boundary_ids[i]
+                second_id = unique_boundary_ids[j]
+                pair_key = tuple(sorted((first_id, second_id)))
+                if pair_key in processed_boundary_pairs:
+                    continue
+                processed_boundary_pairs.add(pair_key)
+
+                first_bbox = node_bboxes.get(first_id)
+                second_bbox = node_bboxes.get(second_id)
+                if first_bbox is None or second_bbox is None:
+                    continue
+                first_node = nodes_by_id.get(first_id)
+                second_node = nodes_by_id.get(second_id)
+                first_surface_type = str((first_node.properties.get("surface_type") if first_node else "") or "")
+                second_surface_type = str((second_node.properties.get("surface_type") if second_node else "") or "")
+                wall_pair = (
+                    first_surface_type in WALL_LIKE_SURFACE_TYPES
+                    and second_surface_type in WALL_LIKE_SURFACE_TYPES
+                )
+                if wall_pair:
+                    # Keep wall-wall adjacency conservative: only exterior-wall pairs.
+                    if not (
+                        _is_external_boundary_surface(first_node)
+                        and _is_external_boundary_surface(second_node)
+                    ):
+                        continue
+                    # Suppress parallel layered wall pairs; keep corner-like junctions.
+                    if _boundary_plane_axis(first_bbox) == _boundary_plane_axis(second_bbox):
+                        continue
+                relation, props = infer_spatial_relation(
+                    first_bbox,
+                    second_bbox,
+                    touch_epsilon=touch_epsilon,
+                    adjacent_epsilon=adjacent_epsilon,
+                    intersection_epsilon=intersection_epsilon,
+                    first_points=node_points.get(first_id),
+                    second_points=node_points.get(second_id),
+                    use_two_stage_refinement=True,
+                    touch_min_contact_area=DEFAULT_TOUCH_MIN_CONTACT_AREA,
+                    touch_min_contact_length=DEFAULT_TOUCH_MIN_CONTACT_LENGTH,
+                )
+                if relation is None:
+                    continue
+                if relation not in {RelationType.TOUCHES, RelationType.INTERSECTS}:
+                    continue
+                shared_edge_length = _boundary_shared_edge_length(
+                    boundary_polygon_rings.get(first_id),
+                    boundary_polygon_rings.get(second_id),
+                    line_tolerance=DEFAULT_ADJACENT_SURFACE_EDGE_LINE_TOLERANCE,
+                )
+                if shared_edge_length < DEFAULT_ADJACENT_SURFACE_MIN_SHARED_EDGE_LENGTH:
+                    continue
+
+                base_props = dict(props)
+                base_props["basis_relation"] = relation.value
+                base_props["shared_edge_length"] = round(shared_edge_length, 6)
+                base_props["min_shared_edge_length"] = DEFAULT_ADJACENT_SURFACE_MIN_SHARED_EDGE_LENGTH
+                base_props["shared_edge_line_tolerance"] = DEFAULT_ADJACENT_SURFACE_EDGE_LINE_TOLERANCE
+                base_props["adjacent_surface_method"] = "polygon_shared_edge_v1"
+                _add_edge_if_valid(graph, create_edge(first_id, second_id, RelationType.ADJACENT_SURFACE, **base_props))
+                _add_edge_if_valid(graph, create_edge(second_id, first_id, RelationType.ADJACENT_SURFACE, **base_props))
+
+    processed_vertical_pairs: set[tuple[str, str]] = set()
+    for room_id in sorted(set(room_to_furniture.keys()) | set(room_to_opening.keys())):
+        candidate_ids = sorted(set(room_to_furniture.get(room_id, []) + room_to_opening.get(room_id, [])))
+        scoped_ids: list[str] = []
+        for node_id in candidate_ids:
+            node = nodes_by_id.get(node_id)
+            if node is None or node.node_type not in VERTICAL_RELATION_OBJECT_TYPES:
+                continue
+            if node.node_type == NodeType.OPENING and not _is_door_or_window_opening(node):
+                continue
+            if node_id not in node_bboxes:
+                continue
+            scoped_ids.append(node_id)
+
+        for i in range(len(scoped_ids)):
+            for j in range(i + 1, len(scoped_ids)):
+                first_id = scoped_ids[i]
+                second_id = scoped_ids[j]
+                pair_key = tuple(sorted((first_id, second_id)))
+                if pair_key in processed_vertical_pairs:
+                    continue
+                processed_vertical_pairs.add(pair_key)
+
+                relation, props = _infer_vertical_relation(
+                    node_bboxes.get(first_id),
+                    node_bboxes.get(second_id),
+                    touch_epsilon=touch_epsilon,
+                    intersection_epsilon=intersection_epsilon,
+                )
+                if relation is None:
+                    continue
+
+                inverse_relation = RelationType.BELOW if relation == RelationType.ABOVE else RelationType.ABOVE
+                _add_edge_if_valid(graph, create_edge(first_id, second_id, relation, **props))
+                _add_edge_if_valid(graph, create_edge(second_id, first_id, inverse_relation, **props))
 
     normalized_edges, removed = normalize_spatial_precedence(graph.edges)
     if removed > 0:
@@ -1335,6 +2119,91 @@ def _build_spatial_edges(
             "[Spatial] precedence normalization applied: removed_weaker_edges=%d rule=INTERSECTS>TOUCHES>ADJACENT_TO",
             removed,
         )
+
+    attached_candidates: dict[tuple[str, str], dict[str, object]] = {}
+    for edge in graph.edges:
+        if edge.relation != RelationType.TOUCHES:
+            continue
+        source_node = nodes_by_id.get(edge.source_id)
+        target_node = nodes_by_id.get(edge.target_id)
+        if source_node is None or target_node is None:
+            continue
+
+        furniture_id: str | None = None
+        boundary_id: str | None = None
+        if source_node.node_type == NodeType.BUILDING_FURNITURE and target_node.node_type == NodeType.BOUNDARY_SURFACE:
+            furniture_id = edge.source_id
+            boundary_id = edge.target_id
+        elif source_node.node_type == NodeType.BOUNDARY_SURFACE and target_node.node_type == NodeType.BUILDING_FURNITURE:
+            furniture_id = edge.target_id
+            boundary_id = edge.source_id
+        if furniture_id is None or boundary_id is None:
+            continue
+        attached_candidates[(furniture_id, boundary_id)] = {
+            "method": "touch_attachment_v1",
+            "source": "touches_relation",
+            "confidence": 0.9,
+            "evidence_score": 0.9,
+        }
+
+    attachment_gap_epsilon = max(float(touch_epsilon), DEFAULT_ATTACHMENT_VERTICAL_GAP_EPSILON)
+    for room_id, furniture_ids in room_to_furniture.items():
+        unique_furniture_ids = sorted(set(furniture_ids))
+        boundary_ids = sorted(set(room_to_boundary.get(room_id, [])))
+        for furniture_id in unique_furniture_ids:
+            furniture_bbox = node_bboxes.get(furniture_id)
+            if furniture_bbox is None:
+                continue
+            for boundary_id in boundary_ids:
+                boundary_node = nodes_by_id.get(boundary_id)
+                if boundary_node is None or boundary_node.node_type != NodeType.BOUNDARY_SURFACE:
+                    continue
+                surface_type = str(boundary_node.properties.get("surface_type") or "")
+                if surface_type not in FLOOR_LIKE_SURFACE_TYPES:
+                    continue
+                boundary_bbox = node_bboxes.get(boundary_id)
+                if boundary_bbox is None:
+                    continue
+                if not _bbox_xy_overlaps(furniture_bbox, boundary_bbox, intersection_epsilon=intersection_epsilon):
+                    continue
+                vertical_gap = abs(float(furniture_bbox.min_point.z) - float(boundary_bbox.max_point.z))
+                if vertical_gap > attachment_gap_epsilon:
+                    continue
+                pair_key = (furniture_id, boundary_id)
+                if pair_key in attached_candidates:
+                    continue
+                attached_candidates[pair_key] = {
+                    "method": "floor_contact_gap_v2",
+                    "source": "floor_vertical_gap",
+                    "vertical_gap": round(vertical_gap, 6),
+                    "vertical_gap_epsilon": round(attachment_gap_epsilon, 6),
+                    "confidence": 0.85,
+                    "evidence_score": round(max(0.75, 0.92 - min(0.15, vertical_gap / max(attachment_gap_epsilon, 1e-9) * 0.15)), 4),
+                }
+
+    for furniture_id, boundary_id in sorted(attached_candidates):
+        boundary_node = nodes_by_id.get(boundary_id)
+        boundary_surface_type = "BoundarySurface"
+        if boundary_node is not None:
+            boundary_surface_type = str(boundary_node.properties.get("surface_type") or "BoundarySurface")
+        attachment_props = attached_candidates[(furniture_id, boundary_id)]
+        _add_edge_if_valid(
+            graph,
+            create_edge(
+                furniture_id,
+                boundary_id,
+                RelationType.ATTACHED_TO,
+                method=str(attachment_props.get("method") or "touch_attachment_v1"),
+                source=str(attachment_props.get("source") or "touches_relation"),
+                boundary_surface_type=boundary_surface_type,
+                confidence=float(attachment_props.get("confidence") or 0.9),
+                evidence_score=float(attachment_props.get("evidence_score") or attachment_props.get("confidence") or 0.9),
+                vertical_gap=attachment_props.get("vertical_gap"),
+                vertical_gap_epsilon=attachment_props.get("vertical_gap_epsilon"),
+                computed_at=datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+
     return len(graph.edges) - edge_count_before
 
 
@@ -1394,7 +2263,7 @@ def _augment_connects_edges(
     opening_ids = [
         node_id
         for node_id, node in nodes_by_id.items()
-        if node.node_type == NodeType.OPENING
+        if node.node_type == NodeType.OPENING and _is_connects_opening(node)
     ]
     for opening_id in opening_ids:
         if connects_index.get(opening_id):
@@ -1440,6 +2309,8 @@ def _augment_connects_edges(
                     touch_epsilon=touch_epsilon,
                     adjacent_epsilon=adjacent_epsilon,
                     intersection_epsilon=intersection_epsilon,
+                    touch_min_contact_area=DEFAULT_TOUCH_MIN_CONTACT_AREA,
+                    touch_min_contact_length=DEFAULT_TOUCH_MIN_CONTACT_LENGTH,
                 )
                 if relation is not None:
                     filtered_room_ids.append(room_id)
@@ -1455,6 +2326,9 @@ def _augment_connects_edges(
                     RelationType.CONNECTS,
                     method="hierarchy_bbox_fallback_v1",
                     source="connects_fallback",
+                    confidence=0.85,
+                    evidence_score=0.85,
+                    computed_at=datetime.now(timezone.utc).isoformat(),
                 ),
             )
             if len(graph.edges) > before:
@@ -1609,6 +2483,15 @@ def _is_door_or_window_opening(node: Node) -> bool:
     return opening_type in SPATIAL_OPENING_TYPES
 
 
+def _is_connects_opening(node: Node) -> bool:
+    opening_type = str(
+        node.properties.get("opening_type")
+        or node.properties.get("source_tag")
+        or ""
+    )
+    return opening_type in CONNECTS_OPENING_TYPES
+
+
 def _spatial_pair_family(source_node: Node, target_node: Node) -> str | None:
     source_type = source_node.node_type
     target_type = target_node.node_type
@@ -1625,73 +2508,91 @@ def _spatial_pair_family(source_node: Node, target_node: Node) -> str | None:
     return None
 
 
-def _build_spatial_score_metrics(graph: SceneGraph) -> dict[str, object]:
+def _build_spatial_score_metrics(
+    graph: SceneGraph,
+    *,
+    expected_connects_total: int = 0,
+    touch_epsilon: float = DEFAULT_SPATIAL_TOUCH_EPSILON,
+    adjacent_epsilon: float = DEFAULT_SPATIAL_ADJACENT_EPSILON,
+    intersection_epsilon: float = DEFAULT_SPATIAL_INTERSECTION_EPSILON,
+) -> dict[str, object]:
     nodes_by_id = graph.nodes
-    inside_index = _edge_index(graph, RelationType.INSIDE)  # furniture -> room
-    bounded_by_index = _edge_index(graph, RelationType.BOUNDED_BY)  # room -> boundary surface
     connects_index = _edge_index(graph, RelationType.CONNECTS)  # opening -> room
-
-    room_to_furniture: dict[str, list[str]] = defaultdict(list)
-    for furniture_id, room_ids in inside_index.items():
-        furniture_node = nodes_by_id.get(furniture_id)
-        if furniture_node is None or furniture_node.node_type != NodeType.BUILDING_FURNITURE:
-            continue
-        for room_id in room_ids:
-            room_node = nodes_by_id.get(room_id)
-            if room_node is None or room_node.node_type != NodeType.ROOM:
-                continue
-            room_to_furniture[room_id].append(furniture_id)
-
-    room_to_boundary: dict[str, list[str]] = defaultdict(list)
-    for room_id, boundary_ids in bounded_by_index.items():
-        room_node = nodes_by_id.get(room_id)
-        if room_node is None or room_node.node_type != NodeType.ROOM:
-            continue
-        for boundary_id in boundary_ids:
-            boundary_node = nodes_by_id.get(boundary_id)
-            if boundary_node is None or boundary_node.node_type != NodeType.BOUNDARY_SURFACE:
-                continue
-            room_to_boundary[room_id].append(boundary_id)
-
-    room_to_opening: dict[str, list[str]] = defaultdict(list)
-    for opening_id, room_ids in connects_index.items():
-        opening_node = nodes_by_id.get(opening_id)
-        if opening_node is None or opening_node.node_type != NodeType.OPENING:
-            continue
-        if not _is_door_or_window_opening(opening_node):
-            continue
-        for room_id in room_ids:
-            room_node = nodes_by_id.get(room_id)
-            if room_node is None or room_node.node_type != NodeType.ROOM:
-                continue
-            room_to_opening[room_id].append(opening_id)
+    room_to_furniture, room_to_boundary, room_to_opening, scope_stats = _build_room_spatial_scope(
+        graph,
+        include_container_fallback=True,
+        collapse_layered_fallback=True,
+    )
+    room_to_boundary_for_connects = room_to_boundary
+    if scope_stats["fallback_room_count"] > 0:
+        LOGGER.info(
+            "[ScoreScope] room boundary fallback used: rooms=%d raw_links=%d collapsed_links=%d reduced=%d",
+            scope_stats["fallback_room_count"],
+            scope_stats["fallback_boundary_link_count"],
+            scope_stats["fallback_boundary_collapsed_link_count"],
+            scope_stats["fallback_boundary_reduced_link_count"],
+        )
+    has_opening_index = _edge_index(graph, RelationType.HAS_OPENING)  # boundary surface -> opening
 
     target_types = {NodeType.BUILDING_FURNITURE, NodeType.BOUNDARY_SURFACE, NodeType.OPENING}
     node_bboxes = _build_node_bboxes(graph, target_types=target_types)
+    node_points = _build_node_points(graph, target_types=target_types)
 
-    candidate_counts: dict[str, int] = {
+    candidate_pair_keys: dict[str, set[tuple[str, str]]] = {
+        "furniture_boundary_surface": set(),
+        "furniture_opening": set(),
+        "furniture_furniture": set(),
+        "opening_room_connects": set(),
+    }
+    candidate_pair_counts: dict[str, int] = {
         "furniture_boundary_surface": 0,
         "furniture_opening": 0,
         "furniture_furniture": 0,
+        "opening_room_connects": 0,
+    }
+    candidate_pair_counts_directed: dict[str, int] = {
+        "furniture_boundary_surface": 0,
+        "furniture_opening": 0,
+        "furniture_furniture": 0,
+        "opening_room_connects": 0,
     }
     for room_id, furniture_ids in room_to_furniture.items():
         furniture_bbox_ids = sorted({node_id for node_id in furniture_ids if node_id in node_bboxes})
         boundary_bbox_ids = sorted({node_id for node_id in room_to_boundary.get(room_id, []) if node_id in node_bboxes})
         opening_bbox_ids = sorted({node_id for node_id in room_to_opening.get(room_id, []) if node_id in node_bboxes})
 
-        candidate_counts["furniture_boundary_surface"] += len(furniture_bbox_ids) * len(boundary_bbox_ids) * 2
-        candidate_counts["furniture_opening"] += len(furniture_bbox_ids) * len(opening_bbox_ids) * 2
-        candidate_counts["furniture_furniture"] += len(furniture_bbox_ids) * max(len(furniture_bbox_ids) - 1, 0)
+        for furniture_id in furniture_bbox_ids:
+            for boundary_id in boundary_bbox_ids:
+                candidate_pair_keys["furniture_boundary_surface"].add(tuple(sorted((furniture_id, boundary_id))))
+
+        for furniture_id in furniture_bbox_ids:
+            for opening_id in opening_bbox_ids:
+                candidate_pair_keys["furniture_opening"].add(tuple(sorted((furniture_id, opening_id))))
+
+        for index, source_id in enumerate(furniture_bbox_ids):
+            for target_id in furniture_bbox_ids[index + 1 :]:
+                candidate_pair_keys["furniture_furniture"].add(tuple(sorted((source_id, target_id))))
+
+    for family in ("furniture_boundary_surface", "furniture_opening", "furniture_furniture"):
+        candidate_pair_counts[family] = len(candidate_pair_keys[family])
+        candidate_pair_counts_directed[family] = len(candidate_pair_keys[family]) * 2
 
     family_relation_counts: dict[str, Counter[str]] = {
         "furniture_boundary_surface": Counter(),
         "furniture_opening": Counter(),
         "furniture_furniture": Counter(),
+        "opening_room_connects": Counter(),
     }
     inferred_total = 0
     metadata_valid_total = 0
     schema_valid_total = 0
     pair_relations: dict[tuple[str, str], set[RelationType]] = defaultdict(set)
+    family_inferred_pair_keys: dict[str, set[tuple[str, str]]] = {
+        "furniture_boundary_surface": set(),
+        "furniture_opening": set(),
+        "furniture_furniture": set(),
+        "opening_room_connects": set(),
+    }
 
     for edge in graph.edges:
         if edge.relation not in SPATIAL_INFERRED_RELATIONS:
@@ -1707,6 +2608,8 @@ def _build_spatial_score_metrics(graph: SceneGraph) -> dict[str, object]:
         inferred_total += 1
         family_relation_counts[family][edge.relation.value] += 1
         pair_relations[(edge.source_id, edge.target_id)].add(edge.relation)
+        undirected_pair_key = tuple(sorted((edge.source_id, edge.target_id)))
+        family_inferred_pair_keys[family].add(undirected_pair_key)
 
         metadata = edge.properties
         has_required_keys = all(key in metadata for key in SPATIAL_REQUIRED_METADATA_KEYS)
@@ -1736,6 +2639,88 @@ def _build_spatial_score_metrics(graph: SceneGraph) -> dict[str, object]:
         if triple in ALLOWED_RELATIONS:
             schema_valid_total += 1
 
+    # Connectivity family (CONNECTS): derive candidates from room-boundary-opening structural chain.
+    opening_room_candidate_pairs: set[tuple[str, str]] = set()
+    for room_id, boundary_ids in room_to_boundary_for_connects.items():
+        for boundary_id in boundary_ids:
+            for opening_id in has_opening_index.get(boundary_id, []):
+                opening_node = nodes_by_id.get(opening_id)
+                if opening_node is None or opening_node.node_type != NodeType.OPENING:
+                    continue
+                if not _is_connects_opening(opening_node):
+                    continue
+                opening_room_candidate_pairs.add((opening_id, room_id))
+
+    candidate_pair_keys["opening_room_connects"] = set(opening_room_candidate_pairs)
+    connects_candidate_from_structure = len(candidate_pair_keys["opening_room_connects"])
+    for edge in graph.edges:
+        if edge.relation != RelationType.CONNECTS:
+            continue
+        source_node = nodes_by_id.get(edge.source_id)
+        target_node = nodes_by_id.get(edge.target_id)
+        if source_node is None or target_node is None:
+            continue
+        if source_node.node_type != NodeType.OPENING or target_node.node_type != NodeType.ROOM:
+            continue
+        if not _is_connects_opening(source_node):
+            continue
+        family_relation_counts["opening_room_connects"][edge.relation.value] += 1
+        family_inferred_pair_keys["opening_room_connects"].add((edge.source_id, edge.target_id))
+
+    connects_inferred_pair_total = len(family_inferred_pair_keys["opening_room_connects"])
+    connects_candidate_floor = max(int(expected_connects_total), connects_candidate_from_structure)
+    # Ensure candidate count never becomes zero while inferred CONNECTS exists.
+    # This avoids expected=0 / actual>0 inconsistency in sparse or non-nested source structures.
+    connects_candidate_total = max(connects_candidate_floor, connects_inferred_pair_total)
+    if connects_candidate_total > len(candidate_pair_keys["opening_room_connects"]):
+        for opening_id, room_ids in connects_index.items():
+            opening_node = nodes_by_id.get(opening_id)
+            if opening_node is None or opening_node.node_type != NodeType.OPENING:
+                continue
+            if not _is_connects_opening(opening_node):
+                continue
+            for room_id in room_ids:
+                room_node = nodes_by_id.get(room_id)
+                if room_node is None or room_node.node_type != NodeType.ROOM:
+                    continue
+                candidate_pair_keys["opening_room_connects"].add((opening_id, room_id))
+    candidate_pair_counts["opening_room_connects"] = max(
+        connects_candidate_total, len(candidate_pair_keys["opening_room_connects"])
+    )
+    candidate_pair_counts_directed["opening_room_connects"] = candidate_pair_counts["opening_room_connects"]
+
+    plausible_pair_counts: dict[str, int] = {
+        "furniture_boundary_surface": 0,
+        "furniture_opening": 0,
+        "furniture_furniture": 0,
+        "opening_room_connects": 0,
+    }
+    for family, pairs in candidate_pair_keys.items():
+        if family == "opening_room_connects":
+            plausible_pair_counts[family] = candidate_pair_counts[family]
+            continue
+        plausible = 0
+        for source_id, target_id in pairs:
+            source_bbox = node_bboxes.get(source_id)
+            target_bbox = node_bboxes.get(target_id)
+            if source_bbox is None or target_bbox is None:
+                continue
+            relation, _ = infer_spatial_relation(
+                source_bbox,
+                target_bbox,
+                touch_epsilon=touch_epsilon,
+                adjacent_epsilon=adjacent_epsilon,
+                intersection_epsilon=intersection_epsilon,
+                first_points=node_points.get(source_id),
+                second_points=node_points.get(target_id),
+                use_two_stage_refinement=True,
+                touch_min_contact_area=DEFAULT_TOUCH_MIN_CONTACT_AREA,
+                touch_min_contact_length=DEFAULT_TOUCH_MIN_CONTACT_LENGTH,
+            )
+            if relation is not None:
+                plausible += 1
+        plausible_pair_counts[family] = plausible
+
     pair_count = len(pair_relations)
     precedence_valid_pairs = sum(1 for relations in pair_relations.values() if len(relations) <= 1)
     pair_conflict_count = sum(max(0, len(relations) - 1) for relations in pair_relations.values())
@@ -1745,32 +2730,95 @@ def _build_spatial_score_metrics(graph: SceneGraph) -> dict[str, object]:
     precedence_ratio = _safe_ratio(precedence_valid_pairs, pair_count)
     precision_like_ratio = (metadata_ratio + schema_ratio + precedence_ratio) / 3.0
 
-    expected_total = int(sum(candidate_counts.values()))
+    active_families = [family for family, total in candidate_pair_counts.items() if total > 0]
+    inferred_pair_total = int(sum(len(family_inferred_pair_keys[family]) for family in active_families))
+    expected_pair_total = int(sum(candidate_pair_counts[family] for family in active_families))
+    plausible_expected_total = int(sum(plausible_pair_counts[family] for family in active_families))
+    expected_directed_total = int(sum(candidate_pair_counts_directed[family] for family in active_families))
+    inferred_directed_total_coverage = int(
+        sum(sum(family_relation_counts[family].values()) for family in active_families)
+    )
 
     pair_stats: dict[str, dict[str, object]] = {}
     pair_family_scores: dict[str, dict[str, object]] = {}
-    for family, candidate_total in candidate_counts.items():
+    family_coverage_ratios: dict[str, float] = {}
+    weighted_score_sum = 0.0
+    weighted_score_weight_sum = 0.0
+
+    for family, candidate_total in candidate_pair_counts.items():
         relation_counts = family_relation_counts[family]
         family_inferred_total = int(sum(relation_counts.values()))
+        family_inferred_pair_total = int(len(family_inferred_pair_keys[family]))
+        family_coverage_ratio: float | None = None
+        if candidate_total > 0:
+            family_coverage_ratio = _safe_ratio(family_inferred_pair_total, int(candidate_total))
+            family_coverage_ratios[family] = family_coverage_ratio
+        family_weight = float(SPATIAL_FAMILY_WEIGHTS.get(family, 1.0))
+
+        if candidate_total > 0 and family_coverage_ratio is not None:
+            weighted_score_sum += family_coverage_ratio * family_weight
+            weighted_score_weight_sum += family_weight
+
         pair_stats[family] = {
             "candidate_pairs": int(candidate_total),
+            "plausible_candidate_pairs": int(plausible_pair_counts[family]),
+            "candidate_pairs_directed": int(candidate_pair_counts_directed[family]),
             "inferred_total": family_inferred_total,
-            "coverage_score": round(_safe_ratio(family_inferred_total, int(candidate_total)) * 100.0, 2),
+            "inferred_pair_total": family_inferred_pair_total,
+            "coverage_score": round(family_coverage_ratio * 100.0, 2) if family_coverage_ratio is not None else None,
             "relation_counts": dict(relation_counts),
         }
         pair_family_scores[family] = {
-            "score": round(_safe_ratio(family_inferred_total, int(candidate_total)) * 100.0, 2),
-            "actual_total": family_inferred_total,
+            "score": round(family_coverage_ratio * 100.0, 2) if family_coverage_ratio is not None else None,
+            "actual_total": family_inferred_pair_total,
             "expected_total": int(candidate_total),
-            "definition": "family-level candidate-hit-rate over directed candidate pairs",
+            "weight": family_weight,
+            "weighted_score_contribution": (
+                round(family_coverage_ratio * family_weight * 100.0, 2) if family_coverage_ratio is not None else None
+            ),
+            "definition": (
+                "family-level candidate-hit-rate over undirected candidate pairs"
+                if family_coverage_ratio is not None
+                else "N/A (no candidates in this run)"
+            ),
         }
+
+    family_unweighted_ratio = (
+        sum(family_coverage_ratios[family] for family in active_families) / len(active_families)
+        if active_families
+        else 1.0
+    )
+    family_weighted_ratio = (weighted_score_sum / weighted_score_weight_sum) if weighted_score_weight_sum > 0 else 1.0
+    raw_coverage_ratio = _safe_ratio(inferred_pair_total, expected_pair_total)
+    plausible_coverage_ratio = _safe_ratio(inferred_pair_total, plausible_expected_total)
+    density_ratio = family_weighted_ratio
 
     return {
         "spatial_coverage": {
-            "score": round(_safe_ratio(inferred_total, expected_total) * 100.0, 2),
-            "actual_total": int(inferred_total),
-            "expected_total": int(expected_total),
-            "definition": "candidate-hit-rate over directed candidate pairs in v1 scope",
+            "score": round(raw_coverage_ratio * 100.0, 2),
+            "actual_total": int(inferred_pair_total),
+            "expected_total": int(expected_pair_total),
+            "actual_directed_total": int(inferred_directed_total_coverage),
+            "expected_directed_total": int(expected_directed_total),
+            "definition": "raw candidate-hit-rate over active undirected candidate pairs in v1 scope",
+        },
+        "spatial_plausible_coverage": {
+            "score": round(plausible_coverage_ratio * 100.0, 2),
+            "actual_total": int(inferred_pair_total),
+            "plausible_expected_total": int(plausible_expected_total),
+            "expected_total": int(expected_pair_total),
+            "definition": "epsilon-aware plausible candidate hit-rate over active undirected candidate pairs in v1 scope",
+        },
+        "spatial_density": {
+            "score": round(density_ratio * 100.0, 2),
+            "actual_total": int(inferred_pair_total),
+            "expected_total": int(expected_pair_total),
+            "family_unweighted_score": round(family_unweighted_ratio * 100.0, 2),
+            "family_weighted_score": round(family_weighted_ratio * 100.0, 2),
+            "active_family_count": int(len(active_families)),
+            "actual_directed_total": int(inferred_directed_total_coverage),
+            "expected_directed_total": int(expected_directed_total),
+            "definition": "density-only spatial coverage metric (pair hit-rate), separated from quality sanity",
         },
         "spatial_precision_sanity": {
             "score": round(precision_like_ratio * 100.0, 2),
@@ -1780,13 +2828,48 @@ def _build_spatial_score_metrics(graph: SceneGraph) -> dict[str, object]:
             "directed_pair_count": int(pair_count),
             "precedence_valid_pairs": int(precedence_valid_pairs),
             "pair_conflict_count": int(pair_conflict_count),
+            "metadata_score": round(metadata_ratio * 100.0, 2),
+            "schema_score": round(schema_ratio * 100.0, 2),
+            "precedence_score": round(precedence_ratio * 100.0, 2),
+            "definition": "quality-only sanity metric over inferred spatial relations",
+        },
+        "spatial_quality": {
+            "score": round(precision_like_ratio * 100.0, 2),
+            "metadata_score": round(metadata_ratio * 100.0, 2),
+            "schema_score": round(schema_ratio * 100.0, 2),
+            "precedence_score": round(precedence_ratio * 100.0, 2),
+            "inferred_total": int(inferred_total),
+            "pair_conflict_count": int(pair_conflict_count),
+            "definition": "quality-only sanity metric over inferred spatial relations",
         },
         "spatial_pair_stats": pair_stats,
         "spatial_pair_family_scores": pair_family_scores,
+        "spatial_family_normalized_coverage": {
+            "score": round(family_weighted_ratio * 100.0, 2),
+            "family_unweighted_score": round(family_unweighted_ratio * 100.0, 2),
+            "family_weighted_score": round(family_weighted_ratio * 100.0, 2),
+            "weights": {family: float(weight) for family, weight in SPATIAL_FAMILY_WEIGHTS.items()},
+            "active_family_count": int(len(active_families)),
+            "definition": "family-level normalized coverage score with explicit weights",
+        },
+        "spatial_coverage_policy": {
+            "include_connects_family": True,
+            "connects_family_name": "opening_room_connects",
+            "zero_candidate_score_policy": "N/A(null)",
+            "connects_candidate_strategy": "max(source_expected, structural_chain, inferred_pairs_floor)",
+            "plausible_expected_policy": "epsilon-aware plausible candidates reported as supplementary denominator",
+        },
     }
 
 
-def _build_scorecard(graph: SceneGraph, root: Element) -> dict:
+def _build_scorecard(
+    graph: SceneGraph,
+    root: Element,
+    *,
+    touch_epsilon: float = DEFAULT_SPATIAL_TOUCH_EPSILON,
+    adjacent_epsilon: float = DEFAULT_SPATIAL_ADJACENT_EPSILON,
+    intersection_epsilon: float = DEFAULT_SPATIAL_INTERSECTION_EPSILON,
+) -> dict:
     node_counts = Counter(node.node_type for node in graph.nodes.values())
     edge_counts = Counter(edge.relation for edge in graph.edges)
     parent_map = _build_parent_map(root)
@@ -1880,6 +2963,7 @@ def _build_scorecard(graph: SceneGraph, root: Element) -> dict:
     expected_connects = sum(
         1
         for opening in source_opening_elements
+        if local_name(opening.tag) in CONNECTS_OPENING_TYPES
         if _nearest_ancestor_by_tag(opening, parent_map, {"Room"}) is not None
     )
     expected_has_city_object = sum(
@@ -2099,7 +3183,13 @@ def _build_scorecard(graph: SceneGraph, root: Element) -> dict:
         + relation_coverage_ratio * SCORE_RELATION_WEIGHT
         + property_coverage_ratio * SCORE_PROPERTY_WEIGHT
     ) * 100.0
-    spatial_metrics = _build_spatial_score_metrics(graph)
+    spatial_metrics = _build_spatial_score_metrics(
+        graph,
+        expected_connects_total=expected_connects,
+        touch_epsilon=touch_epsilon,
+        adjacent_epsilon=adjacent_epsilon,
+        intersection_epsilon=intersection_epsilon,
+    )
 
     return {
         "overall_score": round(overall_score, 2),
@@ -2307,24 +3397,63 @@ def _emit_conversion_report(
         spatial_coverage = scorecard["spatial_coverage"]
         _log_metric(
             "Spatial coverage",
-            "score=%.2f(%d/%d)"
+            "score=%.2f(%d/%d) directed=%d/%d"
             % (
                 spatial_coverage.get("score", 0.0),
                 spatial_coverage.get("actual_total", 0),
                 spatial_coverage.get("expected_total", 0),
+                spatial_coverage.get("actual_directed_total", 0),
+                spatial_coverage.get("expected_directed_total", 0),
+            ),
+        )
+    if "spatial_plausible_coverage" in scorecard:
+        plausible_coverage = scorecard["spatial_plausible_coverage"]
+        _log_metric(
+            "Spatial plausible coverage",
+            "score=%.2f actual=%d plausible_expected=%d (raw_expected=%d)"
+            % (
+                plausible_coverage.get("score", 0.0),
+                plausible_coverage.get("actual_total", 0),
+                plausible_coverage.get("plausible_expected_total", 0),
+                plausible_coverage.get("expected_total", 0),
+            ),
+        )
+    if "spatial_density" in scorecard:
+        spatial_density = scorecard["spatial_density"]
+        _log_metric(
+            "Spatial density",
+            "score=%.2f family_weighted=%.2f family_unweighted=%.2f active_families=%d"
+            % (
+                spatial_density.get("score", 0.0),
+                spatial_density.get("family_weighted_score", 0.0),
+                spatial_density.get("family_unweighted_score", 0.0),
+                spatial_density.get("active_family_count", 0),
             ),
         )
     if "spatial_precision_sanity" in scorecard:
         spatial_sanity = scorecard["spatial_precision_sanity"]
         _log_metric(
             "Spatial precision-like sanity",
-            "score=%.2f inferred=%d metadata_valid=%d schema_valid=%d pair_conflicts=%d"
+            "score=%.2f metadata=%.2f schema=%.2f precedence=%.2f inferred=%d pair_conflicts=%d"
             % (
                 spatial_sanity.get("score", 0.0),
+                spatial_sanity.get("metadata_score", 0.0),
+                spatial_sanity.get("schema_score", 0.0),
+                spatial_sanity.get("precedence_score", 0.0),
                 spatial_sanity.get("inferred_total", 0),
-                spatial_sanity.get("metadata_valid_total", 0),
-                spatial_sanity.get("schema_valid_total", 0),
                 spatial_sanity.get("pair_conflict_count", 0),
+            ),
+        )
+    if "spatial_quality" in scorecard:
+        spatial_quality = scorecard["spatial_quality"]
+        _log_metric(
+            "Spatial quality",
+            "score=%.2f metadata=%.2f schema=%.2f precedence=%.2f"
+            % (
+                spatial_quality.get("score", 0.0),
+                spatial_quality.get("metadata_score", 0.0),
+                spatial_quality.get("schema_score", 0.0),
+                spatial_quality.get("precedence_score", 0.0),
             ),
         )
     if "spatial_pair_stats" in scorecard:
@@ -2332,12 +3461,16 @@ def _emit_conversion_report(
         _log_metric(
             "Spatial pair stats",
             ", ".join(
-                "%s(candidates=%d,inferred=%d,score=%.2f)"
+                "%s(candidates=%d,inferred=%d,score=%s)"
                 % (
                     name,
                     stats.get("candidate_pairs", 0),
-                    stats.get("inferred_total", 0),
-                    float(stats.get("coverage_score", 0.0)),
+                    stats.get("inferred_pair_total", stats.get("inferred_total", 0)),
+                    (
+                        ("%.2f" % float(stats["coverage_score"]))
+                        if stats.get("coverage_score") is not None
+                        else "N/A"
+                    ),
                 )
                 for name, stats in pair_stats.items()
             ),
@@ -2347,10 +3480,10 @@ def _emit_conversion_report(
         _log_metric(
             "Spatial pair family scores",
             ", ".join(
-                "%s(score=%.2f,%d/%d)"
+                "%s(score=%s,%d/%d)"
                 % (
                     name,
-                    float(stats.get("score", 0.0)),
+                    (("%.2f" % float(stats["score"])) if stats.get("score") is not None else "N/A"),
                     int(stats.get("actual_total", 0)),
                     int(stats.get("expected_total", 0)),
                 )
@@ -2757,7 +3890,13 @@ def run_import_pipeline(
         _stage_skip("build_semantic_edges", detail="no semantic records")
         _stage_skip("build_geometry", detail="no semantic records")
 
-    scorecard = _build_scorecard(graph, root)
+    scorecard = _build_scorecard(
+        graph,
+        root,
+        touch_epsilon=touch_epsilon,
+        adjacent_epsilon=adjacent_epsilon,
+        intersection_epsilon=intersection_epsilon,
+    )
     neo4j_export: dict | None = {"enabled": False, "success": False}
     t_export_neo4j = 0.0
     if to_neo4j:
