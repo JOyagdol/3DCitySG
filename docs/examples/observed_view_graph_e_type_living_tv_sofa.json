@@ -1,0 +1,84 @@
+{
+  "schema_version": "0.2.0",
+  "metadata": {
+    "query_id": "e_type_living_tv_sofa_view",
+    "source": "manual_example_for_world_graph_retrieval",
+    "note": "Living-room-like E-TYPE view with sofa, TV, TV console/table, floor, and wall cues."
+  },
+  "objects": [
+    {
+      "alias": "sofa_1",
+      "type": "BuildingFurniture",
+      "category": "sofa",
+      "weight": 1.0,
+      "confidence": 0.9,
+      "visibility": 0.65
+    },
+    {
+      "alias": "tv_1",
+      "type": "BuildingFurniture",
+      "category": "tv",
+      "weight": 1.0,
+      "confidence": 0.95,
+      "visibility": 0.9
+    },
+    {
+      "alias": "table_1",
+      "type": "BuildingFurniture",
+      "category": "table",
+      "weight": 1.0,
+      "confidence": 0.75,
+      "visibility": 0.75,
+      "attributes": {
+        "role": "tv_console_or_low_table"
+      }
+    },
+    {
+      "alias": "floor_1",
+      "type": "FloorSurface",
+      "category": "floor_surface",
+      "weight": 0.5,
+      "confidence": 0.95,
+      "visibility": 1.0
+    },
+    {
+      "alias": "wall_1",
+      "type": "WallSurface",
+      "category": "wall_surface",
+      "weight": 0.5,
+      "confidence": 0.9,
+      "visibility": 0.9
+    }
+  ],
+  "relations": [
+    ["sofa_1", "ATTACHED_TO", "FloorSurface"],
+    ["table_1", "ATTACHED_TO", "FloorSurface"],
+    ["tv_1", "ABOVE", "table_1"],
+    ["tv_1", "ADJACENT_TO", "wall_1"],
+    ["wall_1", "ADJACENT_SURFACE", "floor_1"]
+  ],
+  "constraints": {
+    "room": {
+      "min_doors": 1,
+      "candidate_limit": 10
+    },
+    "matching": {
+      "min_object_matches": 1,
+      "require_all_required_objects": false,
+      "relation_match_mode": "soft"
+    },
+    "weights": {
+      "object": 1.0,
+      "relation": 1.0,
+      "structural": 0.5,
+      "topology": 0.25,
+      "penalty_missing_required": -3.0
+    }
+  },
+  "query": {
+    "task": "room_localization",
+    "return_top_k": 10,
+    "explain": true,
+    "score_profile": "living_tv_sofa_view_v1"
+  }
+}

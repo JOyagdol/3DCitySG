@@ -1037,21 +1037,24 @@ def _selected_scenarios(name: str) -> list[tuple[str, dict[str, object]]]:
 
 
 def main() -> int:
+    run_t0 = perf_counter()
+    started_at = datetime.now(timezone.utc).isoformat()
     args = build_parser().parse_args()
     params = _build_params(args)
     config = load_project_config(args.config)
     neo4j = config.neo4j
     client = Neo4jClient(neo4j.uri, neo4j.username, neo4j.password, database=neo4j.database)
 
-    started_at = datetime.now(timezone.utc).isoformat()
     results: list[dict[str, object]] = []
     try:
         with client.session() as session:
             for scenario_id, scenario in _selected_scenarios(args.scenario):
                 query = str(scenario["query"])
-                t0 = perf_counter()
+                query_started_at = datetime.now(timezone.utc).isoformat()
+                query_t0 = perf_counter()
                 records = session.run(query, **params).data()
-                elapsed_ms = (perf_counter() - t0) * 1000.0
+                query_elapsed_ms = (perf_counter() - query_t0) * 1000.0
+                query_finished_at = datetime.now(timezone.utc).isoformat()
                 rows = [_json_safe(record) for record in records]
                 top_room = rows[0] if rows else None
                 results.append(
@@ -1062,7 +1065,10 @@ def main() -> int:
                         "query": query.strip(),
                         "params": params,
                         "row_count": len(rows),
-                        "elapsed_ms": round(elapsed_ms, 3),
+                        "elapsed_ms": round(query_elapsed_ms, 3),
+                        "query_elapsed_ms": round(query_elapsed_ms, 3),
+                        "query_started_at": query_started_at,
+                        "query_finished_at": query_finished_at,
                         "top_room": top_room,
                         "rows": rows,
                     }
@@ -1070,10 +1076,15 @@ def main() -> int:
     finally:
         client.close()
 
+    finished_at = datetime.now(timezone.utc).isoformat()
+    query_elapsed_ms_total = sum(float(result.get("query_elapsed_ms", 0.0)) for result in results)
+    total_elapsed_ms = (perf_counter() - run_t0) * 1000.0
     report = {
         "summary": {
             "started_at": started_at,
-            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "finished_at": finished_at,
+            "total_elapsed_ms": round(total_elapsed_ms, 3),
+            "query_elapsed_ms_total": round(query_elapsed_ms_total, 3),
             "config_path": str(args.config),
             "output_path": str(args.output),
             "neo4j_uri": neo4j.uri,
@@ -1092,6 +1103,18 @@ def main() -> int:
     ensure_dir(output.parent)
     output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Room-localization query report written: {output}")
+    print(
+        "Timing: "
+        f"total={round((perf_counter() - run_t0) * 1000.0, 3)}ms "
+        f"query_total={round(query_elapsed_ms_total, 3)}ms "
+        f"scenarios={len(results)}"
+    )
+    for result in results:
+        print(
+            "  "
+            f"{result['id']}: query_elapsed_ms={result['query_elapsed_ms']} "
+            f"rows={result['row_count']}"
+        )
     return 0
 
 

@@ -1,0 +1,100 @@
+{
+  "schema_version": "0.2.0",
+  "metadata": {
+    "query_id": "e_type_empty_window_room_view",
+    "source": "manual_scenario_from_user_image",
+    "note": "Furniture-sparse E-TYPE room view. Visible cues are one large window on the right wall, a second exterior opening or door-like opening on the left, wall surfaces, floor surface, and wall-floor boundary topology. This scenario tests whether sparse opening/boundary evidence can localize a room without furniture evidence."
+  },
+  "objects": [
+    {
+      "alias": "window_1",
+      "type": "Opening",
+      "category": "window",
+      "weight": 2.0,
+      "confidence": 0.9,
+      "visibility": 0.85,
+      "attributes": {
+        "position_hint": "right_wall"
+      }
+    },
+    {
+      "alias": "window_or_door_1",
+      "type": "Opening",
+      "category": "window",
+      "weight": 1.25,
+      "confidence": 0.6,
+      "visibility": 0.55,
+      "attributes": {
+        "position_hint": "left_opening",
+        "ambiguity": "could_be_window_or_door"
+      }
+    },
+    {
+      "alias": "door_1",
+      "type": "Opening",
+      "category": "door",
+      "weight": 1.0,
+      "confidence": 0.65,
+      "visibility": 0.55,
+      "attributes": {
+        "position_hint": "left_frame"
+      }
+    },
+    {
+      "alias": "wall_1",
+      "type": "WallSurface",
+      "category": "wall_surface",
+      "weight": 0.75,
+      "confidence": 0.95,
+      "visibility": 1.0
+    },
+    {
+      "alias": "wall_2",
+      "type": "WallSurface",
+      "category": "wall_surface",
+      "weight": 0.75,
+      "confidence": 0.9,
+      "visibility": 0.9
+    },
+    {
+      "alias": "floor_1",
+      "type": "FloorSurface",
+      "category": "floor_surface",
+      "weight": 0.5,
+      "confidence": 0.9,
+      "visibility": 0.9
+    }
+  ],
+  "relations": [
+    ["window_1", "HOSTED_BY", "wall_1"],
+    ["window_or_door_1", "HOSTED_BY", "wall_2"],
+    ["door_1", "CONNECTS", "Room"],
+    ["wall_1", "ADJACENT_SURFACE", "floor_1"],
+    ["wall_2", "ADJACENT_SURFACE", "floor_1"]
+  ],
+  "constraints": {
+    "room": {
+      "min_windows": 1,
+      "min_doors": 1,
+      "candidate_limit": 10
+    },
+    "matching": {
+      "min_object_matches": 1,
+      "require_all_required_objects": false,
+      "relation_match_mode": "soft"
+    },
+    "weights": {
+      "object": 1.0,
+      "relation": 1.0,
+      "structural": 0.5,
+      "topology": 0.25,
+      "penalty_missing_required": -2.0
+    }
+  },
+  "query": {
+    "task": "room_localization",
+    "return_top_k": 10,
+    "explain": true,
+    "score_profile": "opening_boundary_view_v1"
+  }
+}

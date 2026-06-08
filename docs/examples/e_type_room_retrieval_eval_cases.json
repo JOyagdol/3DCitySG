@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "case_id": "e_type_kitchen_view",
+      "report_path": "data/output/e_type_kitchen_view_graph_query_report.json",
+      "scenario_id": "combined_room_score",
+      "target_room": "E103"
+    },
+    {
+      "case_id": "e_type_living_tv_sofa_view",
+      "report_path": "data/output/e_type_living_tv_sofa_query_report.json",
+      "scenario_id": "combined_room_score",
+      "target_room": "E102"
+    }
+  ]
+}
