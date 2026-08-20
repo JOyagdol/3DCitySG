@@ -33,11 +33,16 @@ Without explicit status labeling, these can be mistaken for active runtime code.
 - `src/citygml_sg/modules/generic/parser.py`
 - `src/citygml_sg/modules/opening/mapper.py`
 - `src/citygml_sg/modules/room/mapper.py`
-- `src/citygml_sg/relations/candidate_search.py`
-- `src/citygml_sg/relations/directional.py`
-- `src/citygml_sg/relations/intersection.py`
-- `src/citygml_sg/relations/semantic_filters.py`
 - `src/citygml_sg/utils/crs.py`
+
+## Removed Stubs
+
+The following placeholder-only relation files were removed during the Phase 5 surface cleanup because they were not imported by the active pipeline, tests, or documented commands:
+
+1. `src/citygml_sg/relations/candidate_search.py`
+2. `src/citygml_sg/relations/directional.py`
+3. `src/citygml_sg/relations/intersection.py`
+4. `src/citygml_sg/relations/semantic_filters.py`
 
 ## Promotion Rule (Stub -> Active)
 

@@ -1,3 +1,5 @@
+﻿> Latest retrieval numbers should be read from docs/retrieval/raw_json_sync_review_ko.md first. Some legacy tables in this document may still contain older heuristic values until the raw-JSON sync script regenerates them.
+
 # Room Localization Cypher Scenario Guide
 
 Purpose:
@@ -23,25 +25,25 @@ Result notes:
 Run all scenarios:
 
 ```powershell
-python scripts/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_room_localization_query_report.json --scenario all --limit 10
+python scripts/retrieval/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_room_localization_query_report.json --scenario all --limit 10
 ```
 
 Run only the combined room score:
 
 ```powershell
-python scripts/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_room_localization_query_report.json --scenario combined_room_score --limit 10 --furniture-keywords storage fridge table sofa
+python scripts/retrieval/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_room_localization_query_report.json --scenario combined_room_score --limit 10 --furniture-keywords storage fridge table sofa
 ```
 
 Check only sofa-table pair relations:
 
 ```powershell
-python scripts/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_sofa_table_query_report.json --scenario furniture_pair_relation --limit 10 --source-keywords sofa --target-keywords table
+python scripts/retrieval/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_sofa_table_query_report.json --scenario furniture_pair_relation --limit 10 --source-keywords sofa --target-keywords table
 ```
 
 Run the SmartCity Lab window/boundary view scenario:
 
 ```powershell
-python scripts/room_localization_queries.py --config configs/default.yaml --output data/output/smartcity_lab_corridor_window_query_report.json --scenario opening_boundary_room_score --view-graph docs/examples/observed_view_graph_smartcity_corridor_window.json
+python scripts/retrieval/room_localization_queries.py --config configs/default.yaml --output data/output/smartcity_lab_corridor_window_query_report.json --scenario opening_boundary_room_score --view-graph docs/examples/observed_view_graph_smartcity_corridor_window.json
 ```
 
 ## 3) Scenario Set
@@ -130,7 +132,7 @@ docs/examples/observed_view_graph_kitchen.json
 Example command:
 
 ```powershell
-python scripts/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_kitchen_view_graph_query_report.json --scenario combined_room_score --limit 10 --view-graph docs/examples/observed_view_graph_kitchen.json
+python scripts/retrieval/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_kitchen_view_graph_query_report.json --scenario combined_room_score --limit 10 --view-graph docs/examples/observed_view_graph_kitchen.json
 ```
 
 Example schema:
@@ -198,7 +200,7 @@ docs/examples/observed_view_graph_smartcity_corridor_window.json
 Command:
 
 ```powershell
-python scripts/room_localization_queries.py --config configs/default.yaml --output data/output/smartcity_lab_corridor_window_query_report.json --scenario opening_boundary_room_score --view-graph docs/examples/observed_view_graph_smartcity_corridor_window.json
+python scripts/retrieval/room_localization_queries.py --config configs/default.yaml --output data/output/smartcity_lab_corridor_window_query_report.json --scenario opening_boundary_room_score --view-graph docs/examples/observed_view_graph_smartcity_corridor_window.json
 ```
 
 Scored evidence:

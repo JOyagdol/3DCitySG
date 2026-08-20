@@ -1,3 +1,5 @@
+﻿> Latest retrieval numbers should be read from docs/retrieval/raw_json_sync_review_ko.md first. Some legacy tables in this document may still contain older heuristic values until the raw-JSON sync script regenerates them.
+
 # Room Localization Query Results for Paper Notes
 
 Baseline date: 2026-06-04  
@@ -195,7 +197,7 @@ The result should be presented as a proof-of-concept for queryable localization 
 Recommended next run:
 
 ```powershell
-python scripts/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_kitchen_view_graph_query_report.json --scenario combined_room_score --limit 10 --view-graph docs/examples/observed_view_graph_kitchen.json
+python scripts/retrieval/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_kitchen_view_graph_query_report.json --scenario combined_room_score --limit 10 --view-graph docs/examples/observed_view_graph_kitchen.json
 ```
 
 After that run, update this document with a second table comparing:

@@ -1,172 +1,127 @@
 # Representation CityGML Building Models into a Queryable Semantic-Spatial Scene Graph
 
-A Python-based research framework for constructing semantic-spatial scene graphs from CityGML building models.
+A Python-based research framework for constructing queryable semantic-spatial scene graphs from CityGML building models.
 
-This project is research-first: it focuses on semantic and spatial scene graph construction for indoor/outdoor building context, not on generic GIS conversion.
-Current conversion baseline is **CityGML 2.0**.
+Current baseline: **CityGML 2.0 building-focused pipeline**.
 
----
+## 1. Purpose
 
-## Overview
+CityGML contains semantic hierarchy and geometry, but downstream query, benchmark, and localization tasks need an explicit graph representation. This project converts CityGML building models into a semantic-spatial scene graph and supports Neo4j-based analysis workflows.
 
-CityGML contains rich semantic and geometric structure, but many downstream tasks need an explicit graph representation.
-This framework converts building-related CityGML objects into a scene graph that supports:
+Primary goals:
 
-- semantic hierarchy extraction
-- geometry-aware enrichment
-- spatial relation modeling
-- graph-ready outputs for Neo4j and analysis workflows
+1. Parse CityGML building-related semantic objects.
+2. Normalize geometry metadata such as bbox, centroid, polygon, ring, and position structures.
+3. Construct semantic, geometry, and spatial graph relations.
+4. Export graph results to JSON and Neo4j.
+5. Evaluate graph quality with scorecards, benchmarks, and retrieval scenarios.
+6. Support research extensions toward observed-view-graph retrieval and room localization.
 
-Current stable parsing and scorecard assumptions are aligned to **CityGML 2.0 building module structures**.
+## 2. Supported Object Scope
 
-Priority object families:
+Current supported building object families:
 
-- Building
-- BuildingPart
-- Room
-- BoundarySurface
-- Opening (Door, Window)
-- BuildingFurniture
+1. `Building`
+2. `BuildingPart`
+3. `Room`
+4. `BoundarySurface`
+5. `Opening`
+6. `Door`
+7. `Window`
+8. `BuildingFurniture`
+9. `BuildingInstallation` / `IntBuildingInstallation` where present
 
----
+## 3. Domain Layout
 
-## Objectives
+The project is organized around three research domains while keeping the stable CityGML import core intact.
 
-1. Parse CityGML building-related objects into explicit internal models
-2. Normalize geometry metadata (LoD, bbox/centroid pipeline-ready fields)
-3. Extract semantic and spatial relations
-4. Construct an internal scene graph
-5. Persist graph data to Neo4j
-6. Support future research extensions:
-   - ontology alignment
-   - sensor/document linkage
-   - LLM or agent-based querying
-   - multimodal scene understanding
-
----
-
-## Research Contributions
-
-- CityGML-specific semantic-spatial graph construction pipeline for building scenes
-- Explicit v1 support for BuildingFurniture as a first-class indoor object
-- Clear separation between parsing, relation logic, graph construction, and persistence
-- Reproducible graph output path for experimentation and paper-oriented analysis
-
----
-
-## Key Features
-
-### Semantic object parsing
-
-Parses CityGML object families into structured domain representations.
-
-### Scene graph construction
-
-Builds internal node and edge structures from parsed semantics.
-
-### Spatial-semantic relations
-
-Targets relation enrichment for:
-
-- `CONTAINS`
-- `CONSISTS_OF_BUILDING_PART`
-- `INTERIOR_ROOM`
-- `OUTER_BUILDING_INSTALLATION`
-- `INTERIOR_BUILDING_INSTALLATION`
-- `ROOM_INSTALLATION`
-- `BOUNDED_BY`
-- `HAS_SURFACE_TYPE`
-- `HAS_OPENING`
-- `HAS_APPEARANCE`
-- `HAS_SURFACE_DATA`
-- `APPLIES_TO`
-- `INSIDE`
-- `ADJACENT_TO`
-- `TOUCHES`
-- `CONNECTS`
-- `INTERSECTS`
-- `HOSTED_BY`
-- `ADJACENT_SURFACE`
-- `ATTACHED_TO`
-- `ABOVE`
-- `BELOW`
-
-Current spatial inference baseline:
-
-- Geometry-derived AABB method (`bbox_aabb_v1`)
-- Pipeline uses `Object -> Polygon -> LinearRing -> Position` coordinates to build per-node bbox
-- Decision order: `INTERSECTS > TOUCHES > ADJACENT_TO`
-- Detailed spec: `docs/spatial_relation_spec_v1.md`
-- Paper-oriented v2 algorithm notes: `docs/spatial_relation_v2_algorithm_notes.md` / `docs/spatial_relation_v2_algorithm_notes_ko.md`
-
-### Neo4j persistence
-
-Provides a dedicated storage layer (`storage/neo4j`) so DB integration stays decoupled from core graph logic.
-
----
-
-## Requirements
-
-- Python 3.10+
-- pip
-- Optional: Neo4j 5.x for DB persistence experiments
-- CityGML 2.0 input files for v1 baseline runs (3.0 expansion path reserved in config)
-
-Dependencies are defined in `pyproject.toml`.
-
----
-
-## Installation and Setup
-
-### 1) Clone repository
-
-```bash
-git clone https://github.com/<YOUR_ID>/3DCitySG.git
-cd 3DCitySG
+```text
+OVG(ImageToGraph)
+-> WorldGraph(CityGMLtoGraph + Anchor)
+-> Retrieval(Query Generator + Graph Matching)
 ```
 
-### 2) Create virtual environment
+Current layout:
 
-Windows PowerShell:
+| Area | Path | Role |
+|---|---|---|
+| Stable core | `src/citygml_sg/app/`, `parsers/`, `modules/`, `extractors/`, `relations/`, `graph/`, `storage/` | CityGML scene graph construction and export |
+| OVG | `src/citygml_sg/ovg/` | Observed View Graph schema validation and future image-output adapters |
+| WorldGraph | `src/citygml_sg/world_graph/` | RoomSignature, RoomAnchor, and future precomputed anchor features |
+| Retrieval | `src/citygml_sg/retrieval/` | Cypher templates, scoring params, graph matching, result reporting |
+| Scripts | `scripts/`, `scripts/retrieval/` | Public commands and retrieval experiment commands |
+| Docs | `docs/`, `docs/ovg/`, `docs/world_graph/`, `docs/retrieval/` | Research notes, command guides, result summaries |
+
+Detailed ownership: `docs/project_structure.md`.
+
+## 4. Current Key Modules
+
+| Module | Purpose |
+|---|---|
+| `src/citygml_sg/app/pipeline.py` | Stable import pipeline orchestration |
+| `src/citygml_sg/app/reporting.py` | Terminal conversion report and stage timeline helpers |
+| `src/citygml_sg/evaluation/scorecard.py` | Node/relation/property scorecard construction |
+| `src/citygml_sg/evaluation/spatial_metrics.py` | Spatial coverage, density, plausible coverage, and precision sanity metrics |
+| `src/citygml_sg/relations/spatial_inference.py` | Spatial relation inference primitives |
+| `src/citygml_sg/relations/spatial_scope.py` | Room-scoped spatial candidate maps and layered boundary representative selection |
+| `src/citygml_sg/relations/spatial_edges.py` | Spatial edge generation and `CONNECTS` fallback augmentation |
+| `src/citygml_sg/ovg/validation/observed_view_graph.py` | OVG JSON validation and parameter normalization |
+| `src/citygml_sg/retrieval/query_generator/room_localization.py` | Room localization Cypher query templates and scenario registry |
+| `src/citygml_sg/retrieval/scoring/view_params.py` | Retrieval parameter builder from CLI/OVG input |
+| `src/citygml_sg/retrieval/graph_matching/signature_similarity.py` | RoomSignature similarity helper |
+| `src/citygml_sg/retrieval/reporting/json_safe.py` | Neo4j result to JSON-safe value conversion |
+| `src/citygml_sg/world_graph/signatures/room_signature.py` | Room-level signature dataclass |
+| `src/citygml_sg/world_graph/anchor/room_anchor.py` | Room anchor dataclass for future precomputed retrieval |
+
+## 5. Spatial Relations
+
+Current relation set includes semantic, geometry, and inferred spatial relations.
+
+Important spatial/retrieval-facing relations:
+
+1. `INSIDE`
+2. `ADJACENT_TO`
+3. `TOUCHES`
+4. `INTERSECTS`
+5. `CONNECTS`
+6. `HOSTED_BY`
+7. `ADJACENT_SURFACE`
+8. `ATTACHED_TO`
+9. `ABOVE`
+10. `BELOW`
+
+Detailed specs:
+
+1. `docs/spatial_relation_spec_v1.md`
+2. `docs/spatial_relation_v2_algorithm_notes.md`
+3. `docs/relation_definitions.md`
+
+## 6. Setup
+
+Install dependencies in your Python environment:
 
 ```powershell
-py -3.11 -m venv .venv
-. .venv\Scripts\Activate.ps1
-```
-
-macOS/Linux:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 3) Install in editable mode
-
-```bash
 python -m pip install -U pip
+```
+
+```powershell
 pip install -e .
 ```
 
-### 4) Configure your own runtime settings
+Configure runtime settings in `configs/default.yaml` or pass another config with `--config`.
 
-Before running, set your local settings in
-`configs/default.yaml` (or pass your own config file with `--config`).
-
-Set Neo4j values from your own environment:
+Neo4j settings example:
 
 ```yaml
 neo4j:
-  uri: bolt://<host>:<port>
-  username: <your_username>
-  password: <your_password>
-  database: <your_database>
+  uri: bolt://localhost:7687
+  username: neo4j
+  password: <your-password>
+  database: neo4j
   batch_size: 5000
 ```
-Example (local default install): `bolt://localhost:7687`, `neo4j`, `<your-password>`, `neo4j`.
-For large imports, tune `batch_size` (e.g., `2000`~`10000`) based on memory and throughput.
 
-Set spatial inference thresholds for experiments:
+Spatial threshold settings example:
 
 ```yaml
 spatial:
@@ -175,313 +130,102 @@ spatial:
   intersection_epsilon: 0.000001
 ```
 
-These values control `TOUCHES`/`ADJACENT_TO`/`INTERSECTS` decisions in import-time spatial relation extraction.
+## 7. Quick Commands
 
----
+Command source-of-truth: `docs/command_cheatsheet.md`.
 
-## How To Run
+Run E-type import and export to Neo4j:
 
-Command source of truth: `docs/command_cheatsheet.md`
-
-### Run with sample CityGML
-
-```bash
-python scripts/run_import.py --input data/input/sample_citygml_v2.gml
+```powershell
+python scripts/run_import.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --output data/output/e_type_import.json --to-neo4j --config configs/default.yaml
 ```
 
-### Run with your dataset
+Refresh latest E-type reports with Neo4j sync:
 
-```bash
-python scripts/run_import.py --input "data/input/fzk_haus_lod2_v2.gml" --output data/output/my_import.json
+```powershell
+python scripts/refresh_latest_reports.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --config configs/default.yaml --dataset-tag "e_type_201dong_ifc4" --to-neo4j --skip-baseline
 ```
 
-### Run and persist to Neo4j
+Run benchmark only:
 
-```bash
-python scripts/run_import.py --input "data/input/fzk_haus_lod2_v2.gml" --output data/output/my_import.json --to-neo4j --config configs/default.yaml
-```
-
-### Run via module CLI
-
-```bash
-python -m citygml_sg.app.cli import --input "data/input/fzk_haus_lod2_v2.gml" --output data/output/my_import.json
-```
-
-```bash
-python -m citygml_sg.app.cli import --input "data/input/fzk_haus_lod2_v2.gml" --output data/output/my_import.json --to-neo4j --config configs/default.yaml
-```
-
-### Run query benchmark suite
-
-```bash
+```powershell
 python scripts/benchmark_queries.py --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
 ```
 
-Built-in benchmark set now includes:
+Run E-type kitchen room retrieval from OVG JSON:
 
-- baseline tier (`B1..B7`): stable structural counts
-- hard tier (`H1..H5`): sparse/high-selectivity spatial checks
-- scenario tier (`S1..S5`): human-style query patterns (including room-to-room path-like query)
-
-```bash
-python -m citygml_sg.app.cli benchmark --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
+```powershell
+python scripts/retrieval/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_kitchen_view_graph_query_report.json --scenario combined_room_score --limit 10 --view-graph docs/examples/observed_view_graph_kitchen.json
 ```
 
-### Run import performance profiling
+Regenerate retrieval result notes from raw JSON:
 
-```bash
-python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" --runs 3 --config configs/default.yaml
+```powershell
+python scripts/retrieval/sync_room_retrieval_docs.py --output docs/retrieval/raw_json_sync_review_ko.md
 ```
 
-```bash
-python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" --runs 3 --to-neo4j --config configs/default.yaml
-```
+## 8. Script Policy
 
-### Validate large-scale baseline (201dong)
+1. Stable CityGML import commands remain under root `scripts/`.
+2. Retrieval experiment commands are canonical under `scripts/retrieval/`.
+3. Root-level retrieval wrappers have been removed.
+4. Future OVG commands should go under `scripts/ovg/`.
+5. Future WorldGraph/RoomSignature commands should go under `scripts/world_graph/`.
 
-```bash
-python scripts/check_large_scale_baseline.py --baseline configs/baselines/201dong_v1_baseline.json --import-summary data/output/E-TYPE_201dong_after_boundarytype.json --profile-report data/output/import_profile_report_201dong_after_boundarytype.json
-```
+## 9. Evaluation and Results
 
-### Refresh latest reports in one command
+Core evaluation docs:
 
-```bash
-python scripts/refresh_latest_reports.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --config configs/default.yaml
-```
+1. `docs/evaluation_scorecard.md`
+2. `docs/testing_and_scoring_guide.md`
+3. `docs/query_benchmark_guide.md`
+4. `docs/dataset_result_comparison.md`
+5. `docs/experiment_results.md`
+6. `docs/retrieval/raw_json_sync_review_ko.md`
 
-Timestamped outputs are saved with input-derived dataset tag, for example:
+Raw output policy:
 
-- `data/output/e_type_201dong_ifc4__import_summary_YYYYMMDD_HHMMSS.json`
-- `data/output/e_type_201dong_ifc4__benchmark_report_YYYYMMDD_HHMMSS.json`
-- `data/output/e_type_201dong_ifc4__import_profile_report_YYYYMMDD_HHMMSS.json`
-- `data/output/e_type_201dong_ifc4__profiling_YYYYMMDD_HHMMSS/`
+1. `data/output/` is ignored by git.
+2. Latest numeric tables should be synchronized from raw JSON outputs.
+3. Historical result tables should be kept separate from latest result docs.
 
-Force Neo4j sync before benchmark:
+## 10. Tests
 
-```bash
-python scripts/refresh_latest_reports.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --config configs/default.yaml --to-neo4j
-```
+Run targeted tests as needed:
 
-Optional skips:
-
-```bash
-python scripts/refresh_latest_reports.py --skip-profile --skip-baseline
-```
-
-Keep timestamped files only (do not overwrite defaults):
-
-```bash
-python scripts/refresh_latest_reports.py --no-promote-defaults
-```
-
-Override dataset tag manually:
-
-```bash
-python scripts/refresh_latest_reports.py --input "<input.gml>" --dataset-tag "building_a"
-```
-
-Generated output:
-
-- default: `data/output/import_summary.json`
-- custom: path passed via `--output`
-
-Runtime log now includes in-progress timeline, for example:
-
-```text
-[Timeline] [1/6] [--------------------------] parse_xml START
-[Timeline] [1/6] [####----------------------] parse_xml DONE (2.184s)
-[Timeline] [2/6] [####----------------------] collect_semantics START
-...
-```
-
-When `--to-neo4j` is enabled, both node and edge export progress are printed as percent bars.
-
----
-
-## CityGML Version Policy
-
-- v1 default target: **CityGML 2.0**
-- Config field: `project.citygml_version` (in `configs/default.yaml`)
-- Code constants:
-  - `citygml_sg.config.DEFAULT_CITYGML_VERSION`
-  - `citygml_sg.config.SUPPORTED_CITYGML_VERSIONS`
-- `3.0` is reserved for extension; do not switch default baseline without explicit scope update.
-
----
-
-## Evaluation Scorecard
-
-- Score formula: `overall = 0.40 * node + 0.30 * relation + 0.30 * property`
-- Fairness rule: expected totals are computed from currently supported extraction scope, not every possible CityGML tag.
-- Spatial diagnostics are also exported in scorecard:
-  - `spatial_coverage`
-  - `spatial_precision_sanity`
-  - `spatial_pair_stats`
-  - `spatial_pair_family_scores`
-- Detailed criteria and interpretation guide: `docs/evaluation_scorecard.md`
-
----
-
-## Spatial Relation Spec
-
-- v1 relation spec (priority, thresholds, metadata, query criteria):
-  - `docs/spatial_relation_spec_v1.md`
-
----
-
-## Regression Testing
-
-- Guide (why/how/policy): `docs/regression_testing.md`
-- Quick run:
-
-```bash
+```powershell
 pytest tests/test_pipeline_regression.py
 ```
 
-```bash
-pytest tests/test_spatial_priority.py
-```
-
-```bash
+```powershell
 pytest tests/test_spatial_relation_pairs.py
 ```
 
----
-
-## Planned Stubs
-
-- Placeholder modules not wired in v1 runtime path are tracked in:
-  - `docs/module_stubs.md`
-
----
-
-## Development Docs
-
-- Development summary: `docs/development_summary.md`
-- Query benchmark guide: `docs/query_benchmark_guide.md`
-- Feature implementation guide: `docs/feature_implementation_guide.md`
-- Testing and scoring guide: `docs/testing_and_scoring_guide.md`
-- Performance profiling guide: `docs/performance_profiling_guide.md`
-- v1 measurement runbook: `docs/v1_measurement_runbook.md`
-- Command cheatsheet: `docs/command_cheatsheet.md`
-- Command cheatsheet (Korean): `docs/command_cheatsheet_ko.md`
-- Reading summary (Korean): `docs/reading_summary_ko.md`
-- Experiment result record template: `docs/experiment_results.md`
-- Experiment result history (archive): `docs/experiment_results_history.md`
-- Dataset comparison tracker: `docs/dataset_result_comparison.md`
-- Dataset comparison history (archive): `docs/dataset_result_history.md`
-
-Note: local Korean copies follow the `_ko.md` suffix and are ignored by Git.
-
----
-
-## Current Scope
-
-### In scope (v1 priority)
-
-- Building
-- BuildingPart
-- Room
-- BoundarySurface
-- Opening, Door, Window
-- BuildingFurniture
-
-### Out of scope (current stage)
-
-- full IFC/BIM conversion
-- point cloud and CV pipelines
-- UI/dashboard development
-- cloud/microservice deployment
-- production-scale optimization
-
----
-
-## Why BuildingFurniture Matters
-
-`BuildingFurniture` is treated as mandatory in v1, not optional.
-It strengthens indoor scene semantics and enables future reasoning on:
-
-- room interior composition
-- furniture containment
-- furniture-to-boundary relations
-- accessibility/connectivity analysis
-
----
-
-## Architecture
-
-```text
-src/citygml_sg/
-|-- app/
-|-- config/
-|-- domain/
-|-- parsers/
-|-- extractors/
-|-- modules/
-|   |-- building/
-|   |-- building_part/
-|   |-- room/
-|   |-- boundary_surface/
-|   |-- opening/
-|   `-- building_furniture/
-|-- relations/
-|-- graph/
-|-- storage/
-|   `-- neo4j/
-`-- utils/
+```powershell
+pytest tests/test_spatial_inference_refinement.py
 ```
 
----
+Future domain tests should be added under:
 
-## Development Notes
+1. `tests/ovg/`
+2. `tests/world_graph/`
+3. `tests/retrieval/`
 
-### Updated implementation status
+## 11. Main Documentation
 
-- Added import runner with explicit file I/O arguments:
-  - `python scripts/run_import.py --input <path> --output <path>`
-- Added module-level parsing hooks for:
-  - Building, BuildingPart, Room, BoundarySurface, Opening (Door/Window), BuildingFurniture
-- Added schema-alignment object parsing:
-  - BuildingInstallation, IntBuildingInstallation, Address
-- Added BoundarySurface subtype coverage:
-  - OuterCeilingSurface, OuterFloorSurface
-- Added node property enrichment from CityGML content:
-  - `gml:name` -> `gml_name`, `gml_name_all`
-  - `gen:*Attribute` -> flattened node properties (e.g., `attr_grossplannedarea`)
-- Added graph build path that currently generates:
-  - `CONTAINS` (Building/BuildingPart/Room hierarchy and Room->Furniture)
-  - `CONSISTS_OF_BUILDING_PART` (Building/BuildingPart->BuildingPart)
-  - `INTERIOR_ROOM` (Building/BuildingPart->Room)
-  - `OUTER_BUILDING_INSTALLATION` (Building/BuildingPart->BuildingInstallation)
-  - `INTERIOR_BUILDING_INSTALLATION` (Building/BuildingPart->IntBuildingInstallation)
-  - `ROOM_INSTALLATION` (Room->IntBuildingInstallation)
-  - `BOUNDED_BY` (Building/BuildingPart/Room/Installation->BoundarySurface)
-  - `HAS_SURFACE_TYPE` (BoundarySurface->BoundarySurfaceType)
-  - `HAS_OPENING` (BoundarySurface->Opening)
-  - `HAS_APPEARANCE` / `HAS_SURFACE_DATA` / `APPLIES_TO` (Appearance subgraph)
-  - `CONNECTS` (Opening(Door)->Room)
-  - `HOSTED_BY` (Opening->BoundarySurface)
-  - `ADJACENT_SURFACE` (BoundarySurface<->BoundarySurface)
-  - `ATTACHED_TO` (Furniture->BoundarySurface, derived from TOUCHES)
-  - `ABOVE` / `BELOW` (object vertical order: Furniture/Door/Window)
-  - `INSIDE` (Furniture->Room)
-- Added geometry subgraph extraction:
-  - object -> `HAS_GEOMETRY` -> Polygon
-  - Polygon -> `HAS_RING` -> LinearRing
-  - LinearRing -> `HAS_POS` -> Position(x, y, z, order)
-- Added LoD geometry structure preservation:
-  - object -> `HAS_LOD_GEOMETRY` -> Solid/MultiSurface/MultiCurve
-  - Solid/MultiSurface -> `HAS_GEOMETRY_MEMBER` -> Polygon
-- Added JSON export for parsed graph summary:
-  - node counts, relation counts, node list, edge list
-- Added import execution timeline logs:
-  - per-stage START/DONE/SKIP messages with progress bar
-  - final stage timeline with duration bars
-- Added sample CityGML input for quick smoke tests:
-  - `data/input/sample_citygml_v2.gml`
+1. Project structure: `docs/project_structure.md`
+2. Architecture: `docs/architecture.md`
+3. Command cheatsheet: `docs/command_cheatsheet.md`
+4. OVG domain: `docs/ovg/README.md`
+5. WorldGraph domain: `docs/world_graph/README.md`
+6. Retrieval domain: `docs/retrieval/README.md`
+7. Pipeline refactor review: `docs/pipeline_refactor_review.md`
+8. Paper outline mapping: `docs/paper_outline.md`
 
-### Design principles
+## 12. Development Policy
 
-- Keep parser, relation extraction, graph builder, and storage layers decoupled
-- Prefer typed, testable, explicit modules over deep abstraction
-- Focus on research iteration speed and reproducibility
+1. Keep parser, graph, relation, storage, and retrieval concerns separated.
+2. Keep `app/pipeline.py` as the stable public orchestration entry point while extracted helpers are validated.
+3. Document every research-facing change in the same work unit.
+4. Treat raw JSON reports as the source-of-truth for numeric result tables.
+5. Keep commands one-line and copyable in command docs.

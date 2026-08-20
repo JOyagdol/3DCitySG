@@ -94,6 +94,8 @@ def test_summary_keeps_scorecard_and_appearance_coverage(tmp_path: Path) -> None
     assert "spatial_pair_family_scores" in summary["scorecard"]
     assert "appearance_coverage" in summary
     assert summary["appearance_coverage"]["appearance_node_count"] == 1
+    assert summary["stage_durations"]["export_json"] > 0.0
+    assert summary["stage_durations"]["total"] > 0.0
 
 
 def test_boundary_surface_keeps_subtype_node(tmp_path: Path) -> None:

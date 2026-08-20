@@ -6,9 +6,7 @@ import argparse
 
 from citygml_sg.app.pipeline import (
     run_benchmark_pipeline,
-    run_export_pipeline,
     run_import_pipeline,
-    run_relation_pipeline,
 )
 
 
@@ -34,8 +32,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Project config path containing neo4j connection info",
     )
 
-    subparsers.add_parser("relations", help="Extract spatial relations")
-    subparsers.add_parser("export", help="Export graph to target storage")
     benchmark_parser = subparsers.add_parser("benchmark", help="Run benchmark queries")
     benchmark_parser.add_argument(
         "--config",
@@ -73,10 +69,6 @@ def main() -> int:
             to_neo4j=args.to_neo4j,
             config_path=args.config,
         )
-    if args.command == "relations":
-        return run_relation_pipeline()
-    if args.command == "export":
-        return run_export_pipeline()
     if args.command == "benchmark":
         return run_benchmark_pipeline(
             config_path=args.config,

@@ -1,3 +1,5 @@
+﻿> Latest retrieval numbers should be read from docs/retrieval/raw_json_sync_review_ko.md first. Some legacy tables in this document may still contain older heuristic values until the raw-JSON sync script regenerates them.
+
 # Dataset Result Comparison Tracker (Latest Only)
 
 Purpose:

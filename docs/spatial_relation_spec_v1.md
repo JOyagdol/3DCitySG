@@ -11,6 +11,12 @@ Detailed paper-oriented algorithm notes:
 1. English: `docs/spatial_relation_v2_algorithm_notes.md`
 2. Korean: `docs/spatial_relation_v2_algorithm_notes_ko.md`
 
+Implementation source after v2 refactor:
+
+1. `src/citygml_sg/relations/spatial_scope.py` for room scope and representative boundary selection.
+2. `src/citygml_sg/relations/spatial_edges.py` for spatial edge generation and `CONNECTS` fallback.
+3. `src/citygml_sg/relations/spatial_inference.py` for low-level geometric inference.
+
 ## v1 Relation Set
 
 1. `INSIDE` (existing)

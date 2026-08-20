@@ -5,6 +5,13 @@ Purpose: paper-oriented explanation of how v2 spatial relations are computed, wh
 
 This document is the detailed companion to `docs/spatial_relation_spec_v1.md`.
 
+Implementation source:
+
+1. `src/citygml_sg/relations/spatial_scope.py`: room scope construction, boundary fallback, layered-surface collapse, representative surface selection.
+2. `src/citygml_sg/relations/spatial_edges.py`: spatial edge generation, `CONNECTS` fallback, `ADJACENT_SURFACE`, `ATTACHED_TO`, `ABOVE`/`BELOW`.
+3. `src/citygml_sg/relations/spatial_inference.py`: low-level AABB/OBB/polygon relation inference primitives.
+4. `src/citygml_sg/evaluation/spatial_metrics.py`: spatial scorecard denominators and family-level scoring.
+
 ## 1. Design Intent
 
 v1 generated AABB-based `ADJACENT_TO`, `TOUCHES`, and `INTERSECTS` relations. This was fast and reproducible, but insufficient for image-to-world graph matching because a room localization query needs structural cues: which wall hosts a window, which surface a furniture object is attached to, and how wall/floor/ceiling surfaces form a room topology.
@@ -166,4 +173,3 @@ This makes spatial relation extraction inspectable and usable for later graph ma
 ## 12. Paper-Ready Summary
 
 The v2 spatial enrichment extends AABB proximity extraction with invariant structural relations and conservative geometric validation. Boundary topology is represented through representative-surface `ADJACENT_SURFACE` edges validated by polygon shared-edge length, while furniture-surface attachment and opening-host relations provide room-level cues for view-graph localization. The design prioritizes queryable structural evidence over exhaustive raw mesh contact preservation.
-

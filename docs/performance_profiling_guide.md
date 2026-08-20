@@ -55,6 +55,8 @@ Outputs:
    - `export_json`
    - `total`
 
+Implementation note: import JSON keeps `summary` at the beginning so large outputs can be read by prefix-only tooling. Because `export_json` and `total` are only known after the streaming writer finishes, those two numeric fields are written with fixed-width placeholders and patched in place after export completes.
+
 ### 4.2 Aggregated
 
 For each metric:

@@ -218,6 +218,19 @@ src/citygml_sg/
 |-- app/
 |-- config/
 |-- domain/
+|-- ovg/
+|   |-- image_to_graph/
+|   |-- adapters/
+|   `-- validation/
+|-- world_graph/
+|   |-- citygml_to_graph/
+|   |-- anchor/
+|   `-- signatures/
+|-- retrieval/
+|   |-- query_generator/
+|   |-- graph_matching/
+|   |-- scoring/
+|   `-- reporting/
 |-- parsers/
 |-- extractors/
 |-- modules/
