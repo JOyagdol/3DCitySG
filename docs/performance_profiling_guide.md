@@ -57,6 +57,8 @@ Outputs:
 
 Implementation note: import JSON keeps `summary` at the beginning so large outputs can be read by prefix-only tooling. Because `export_json` and `total` are only known after the streaming writer finishes, those two numeric fields are written with fixed-width placeholders and patched in place after export completes.
 
+Neo4j export progress is updated inline in the terminal instead of writing a new log line for every checkpoint. The writer consumes each batch result before incrementing progress, so node/edge progress reflects completed Neo4j writes rather than only submitted queries. `neo4j.batch_size` controls both throughput and visible progress granularity.
+
 ### 4.2 Aggregated
 
 For each metric:
@@ -78,6 +80,7 @@ For each metric:
    - inspect geometry volume and bbox computation cost
 2. If `export_neo4j` dominates:
    - tune batch size and inspect DB resources
+   - check `[Neo4j] nodes` and `[Neo4j] edges` progress logs to see whether the bottleneck is node batches or edge batches
 3. If std is high:
    - increase repeats and stabilize runtime environment
 

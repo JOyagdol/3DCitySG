@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import sys
 from pathlib import Path
 from statistics import mean, pstdev
 from time import perf_counter
@@ -897,45 +898,51 @@ def _write_graph_to_neo4j(graph: SceneGraph, config_path: str | Path) -> dict:
         edges = list(graph.edges)
         batch_size = max(1, int(getattr(neo4j, "batch_size", 5000)))
 
-        last_node_percent = -1
-        last_edge_percent = -1
+        progress_line_width = 0
+        progress_line_open = False
 
-        def _log_node_progress(done: int, total: int) -> None:
-            nonlocal last_node_percent
+        def _write_inline_neo4j_progress(kind: str, done: int, total: int) -> None:
+            nonlocal progress_line_open, progress_line_width
             if total <= 0:
                 return
-            percent = int((done * 100) / total)
-            if percent == last_node_percent and done < total:
-                return
-            last_node_percent = percent
-            LOGGER.info(
-                "[Neo4j] %-10s [%s] %6.2f%% (%d/%d)",
-                "nodes",
-                _progress_bar(done, total, width=24),
-                (done / total) * 100.0,
-                done,
-                total,
+            line = (
+                f"[Neo4j] {kind:<10} "
+                f"[{_progress_bar(done, total, width=24)}] "
+                f"{(done / total) * 100.0:6.2f}% ({done}/{total})"
             )
+            padding = " " * max(0, progress_line_width - len(line))
+            sys.stderr.write(f"\r{line}{padding}")
+            sys.stderr.flush()
+            progress_line_width = max(progress_line_width, len(line))
+            progress_line_open = True
+            if done >= total:
+                sys.stderr.write("\n")
+                sys.stderr.flush()
+                progress_line_width = 0
+                progress_line_open = False
 
-        def _log_edge_progress(done: int, total: int) -> None:
-            nonlocal last_edge_percent
-            if total <= 0:
+        def _finish_inline_progress() -> None:
+            nonlocal progress_line_open, progress_line_width
+            if not progress_line_open:
                 return
-            percent = int((done * 100) / total)
-            if percent == last_edge_percent and done < total:
-                return
-            last_edge_percent = percent
-            LOGGER.info(
-                "[Neo4j] %-10s [%s] %6.2f%% (%d/%d)",
-                "edges",
-                _progress_bar(done, total, width=24),
-                (done / total) * 100.0,
-                done,
-                total,
+            sys.stderr.write("\n")
+            sys.stderr.flush()
+            progress_line_open = False
+            progress_line_width = 0
+
+        try:
+            writer.write_nodes(
+                nodes,
+                progress_callback=lambda done, total: _write_inline_neo4j_progress("nodes", done, total),
+                batch_size=batch_size,
             )
-
-        writer.write_nodes(nodes, progress_callback=_log_node_progress, batch_size=batch_size)
-        writer.write_edges(edges, progress_callback=_log_edge_progress, batch_size=batch_size)
+            writer.write_edges(
+                edges,
+                progress_callback=lambda done, total: _write_inline_neo4j_progress("edges", done, total),
+                batch_size=batch_size,
+            )
+        finally:
+            _finish_inline_progress()
         db_node_count = reader.fetch_node_count()
         return {
             "enabled": True,

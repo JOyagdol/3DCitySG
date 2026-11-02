@@ -15,6 +15,7 @@ from citygml_sg.storage.neo4j.queries import (
 )
 
 T = TypeVar("T")
+ProgressCallback = Callable[[int, int], None] | Callable[[tuple[int, int]], None]
 
 
 class Neo4jWriter:
@@ -38,16 +39,27 @@ class Neo4jWriter:
             return f"N_{cleaned}"
         return cleaned
 
+    @staticmethod
+    def _emit_progress(progress_callback: ProgressCallback | None, done: int, total: int) -> None:
+        if progress_callback is None:
+            return
+        try:
+            progress_callback(done, total)  # type: ignore[misc]
+        except TypeError as original_error:
+            try:
+                progress_callback((done, total))  # type: ignore[misc]
+            except TypeError:
+                raise original_error
+
     def write_nodes(
         self,
         nodes: list[Node],
-        progress_callback: Callable[[int, int], None] | None = None,
+        progress_callback: ProgressCallback | None = None,
         progress_step: int | None = None,
         batch_size: int = 5000,
     ) -> None:
         total = len(nodes)
-        if progress_callback is not None:
-            progress_callback(0, total)
+        self._emit_progress(progress_callback, 0, total)
 
         step = progress_step if (progress_step is not None and progress_step > 0) else max(1, total // 100)
         nodes_by_label: dict[str, list[Node]] = defaultdict(list)
@@ -55,6 +67,7 @@ class Neo4jWriter:
             nodes_by_label[self._safe_label(node.node_type.value)].append(node)
 
         done = 0
+        next_progress = step
 
         with self._client.session() as session:
             for label, typed_nodes in nodes_by_label.items():
@@ -67,21 +80,22 @@ class Neo4jWriter:
                         }
                         for node in chunk
                     ]
-                    session.run(query, rows=rows)
+                    session.run(query, rows=rows).consume()
                     done += len(chunk)
-                    if progress_callback is not None and (done % step == 0 or done == total):
-                        progress_callback(done, total)
+                    if progress_callback is not None and (done >= next_progress or done == total):
+                        self._emit_progress(progress_callback, done, total)
+                        while next_progress <= done:
+                            next_progress += step
 
     def write_edges(
         self,
         edges: list[Edge],
-        progress_callback: Callable[[int, int], None] | None = None,
+        progress_callback: ProgressCallback | None = None,
         progress_step: int | None = None,
         batch_size: int = 5000,
     ) -> None:
         total = len(edges)
-        if progress_callback is not None:
-            progress_callback(0, total)
+        self._emit_progress(progress_callback, 0, total)
 
         step = progress_step if (progress_step is not None and progress_step > 0) else max(1, total // 100)
         edges_by_relation: dict[str, list[Edge]] = defaultdict(list)
@@ -89,6 +103,7 @@ class Neo4jWriter:
             edges_by_relation[edge.relation.value].append(edge)
 
         done = 0
+        next_progress = step
         with self._client.session() as session:
             for relation, typed_edges in edges_by_relation.items():
                 query = UPSERT_EDGE_BATCH_TEMPLATE.format(relation=relation)
@@ -101,7 +116,9 @@ class Neo4jWriter:
                         }
                         for edge in chunk
                     ]
-                    session.run(query, rows=rows)
+                    session.run(query, rows=rows).consume()
                     done += len(chunk)
-                    if progress_callback is not None and (done % step == 0 or done == total):
-                        progress_callback(done, total)
+                    if progress_callback is not None and (done >= next_progress or done == total):
+                        self._emit_progress(progress_callback, done, total)
+                        while next_progress <= done:
+                            next_progress += step
