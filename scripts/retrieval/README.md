@@ -13,7 +13,7 @@ Canonical scripts:
 3. `evaluate_room_retrieval_metrics.py`
    - 여러 retrieval report를 읽어 Top-1, Top-3, MRR, 평균 ranking time을 집계한다.
 4. `sync_room_retrieval_docs.py`
-   - raw JSON report에서 `docs/retrieval/raw_json_sync_review_ko.md`를 재생성한다.
+   - raw JSON report에서 로컬 검토 문서 `docs/retrieval/raw_json_sync_review_ko.md`를 재생성한다. 이 생성 문서는 Git에 포함하지 않는다.
 
 운영 규칙:
 

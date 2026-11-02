@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "citygml-scene-graph"
 version = "0.1.0"
-description = "CityGML/CityJSON to scene graph pipeline"
+description = "CityGML 2.0 semantic-spatial scene graph pipeline"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

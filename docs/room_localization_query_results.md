@@ -1,4 +1,4 @@
-﻿> Latest retrieval numbers should be read from docs/retrieval/raw_json_sync_review_ko.md first. Some legacy tables in this document may still contain older heuristic values until the raw-JSON sync script regenerates them.
+﻿> Check retrieval numbers against the raw JSON reports in `data/output/`. The optional review `docs/retrieval/raw_json_sync_review_ko.md` is generated locally by `scripts/retrieval/sync_room_retrieval_docs.py` and is not tracked. Legacy tables below may predate the latest local runs.
 
 # Room Localization Query Results for Paper Notes
 
@@ -9,11 +9,11 @@ Source report: `data/output/e_type_kitchen_view_query_report.json`
 This document records the current query-scenario experiment for paper writing.
 It complements:
 
-1. scenario definitions: `docs/room_localization_query_scenarios.md`
-2. spatial-relation method details: `docs/spatial_relation_v2_algorithm_notes.md`
-3. latest dataset/import results: `docs/experiment_results.md`
-4. dataset-level comparison: `docs/dataset_result_comparison.md`
-5. follow-up World Graph Retrieval handoff: `docs/world_graph_retrieval_handoff_ko.md`
+1. scenario definitions: [docs/room_localization_query_scenarios.md](room_localization_query_scenarios.md)
+2. spatial-relation method details: [docs/spatial_relation_v2_algorithm_notes.md](spatial_relation_v2_algorithm_notes.md)
+3. latest dataset/import results: [docs/experiment_results.md](experiment_results.md)
+4. dataset-level comparison: [docs/dataset_result_comparison.md](dataset_result_comparison.md)
+5. follow-up World Graph Retrieval handoff: `docs/world_graph_retrieval_handoff_ko.md` (optional local handoff; not tracked; see the public [docs/retrieval/README.md](retrieval/README.md) and [docs/world_graph/README.md](world_graph/README.md) for domain status)
 
 ## 1. Research Purpose
 
@@ -197,7 +197,7 @@ The result should be presented as a proof-of-concept for queryable localization 
 Recommended next run:
 
 ```powershell
-python scripts/retrieval/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_kitchen_view_graph_query_report.json --scenario combined_room_score --limit 10 --view-graph docs/examples/observed_view_graph_kitchen.json
+python scripts/retrieval/room_localization_queries.py --config configs/default.local.yaml --output data/output/e_type_kitchen_view_graph_query_report.json --scenario combined_room_score --limit 10 --view-graph docs/examples/observed_view_graph_kitchen.json
 ```
 
 After that run, update this document with a second table comparing:

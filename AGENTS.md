@@ -1,5 +1,21 @@
 # AGENTS.md
 
+<!-- research-second-brain:start -->
+Apply Research Second Brain only to research work.
+Read the relevant installed SKILL.md and references/memory-protocol.md.
+Read config/notion.local.json in the project, or $CODEX_HOME/second-brain/notion.json
+(default ~/.codex/second-brain/notion.json), then fetch the matching Notion Research State.
+Record meaningful checkpoints and handoffs; keep research state out of public Git.
+Do not claim remote sync or Notion writes without checking their result.
+<!-- research-second-brain:end -->
+
+## Repository Hygiene
+
+- Keep credentials in ignored local configuration files; tracked YAML files are templates.
+- Keep private research state, connection identifiers, and pending session notes out of Git.
+- Korean paper notes (`docs/**/*_ko.md`) and generated data stay local, including nested folders.
+- Document generated local reports as local artifacts, not files supplied by a fresh clone.
+
 ## Project Overview
 
 This project is a **research-focused CityGML semantic-spatial scene graph framework**.

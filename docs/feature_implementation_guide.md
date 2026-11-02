@@ -4,11 +4,11 @@ Baseline: CityGML 2.0
 Goal: define stable implementation/validation criteria for core features.
 
 Command source of truth:
-1. `docs/command_cheatsheet.md`
+1. [docs/command_cheatsheet.md](command_cheatsheet.md)
 
 Detailed spatial-relation v2 algorithm notes:
-1. `docs/spatial_relation_v2_algorithm_notes.md`
-2. `docs/spatial_relation_v2_algorithm_notes_ko.md`
+1. [docs/spatial_relation_v2_algorithm_notes.md](spatial_relation_v2_algorithm_notes.md)
+2. `docs/spatial_relation_v2_algorithm_notes_ko.md` (optional local paper notes; not tracked)
 
 ## 1. Spatial Threshold Parameters (`spatial.*`)
 
@@ -70,7 +70,7 @@ In `summary.scorecard`:
 8. `spatial_family_normalized_coverage`
 9. `spatial_coverage_policy`
 
-Source of truth for formula/definition: `docs/evaluation_scorecard.md`.
+Source of truth for formula/definition: [docs/evaluation_scorecard.md](evaluation_scorecard.md).
 
 Final v2 interpretation policy:
 1. `spatial_coverage`: raw hit-rate with base denominator (`expected_total`)
@@ -105,7 +105,7 @@ Final v2 interpretation policy:
 
 ### 3.3 Execution Reference
 
-1. Use `docs/command_cheatsheet.md` for exact test commands.
+1. Use [docs/command_cheatsheet.md](command_cheatsheet.md) for exact test commands.
 
 ## 4. Large-Scale Performance Profiling
 
@@ -132,8 +132,8 @@ Final v2 interpretation policy:
 If implementation or policy changes, update in the same work unit:
 
 1. `README.md`
-2. `docs/evaluation_scorecard.md`
-3. `docs/relation_definitions.md`
-4. `docs/graph_schema.md`
-5. `docs/regression_testing.md`
-6. `docs/development_summary.md`
+2. [docs/evaluation_scorecard.md](evaluation_scorecard.md)
+3. [docs/relation_definitions.md](relation_definitions.md)
+4. [docs/graph_schema.md](graph_schema.md)
+5. [docs/regression_testing.md](regression_testing.md)
+6. [docs/development_summary.md](development_summary.md)

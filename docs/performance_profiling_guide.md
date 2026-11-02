@@ -30,7 +30,7 @@ python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" 
 With Neo4j export:
 
 ```bash
-python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" --runs 3 --to-neo4j --config configs/default.yaml
+python scripts/profile_import_runs.py --input "data/input/fzk_haus_lod2_v2.gml" --runs 3 --to-neo4j --config configs/default.local.yaml
 ```
 
 Outputs:

@@ -1,4 +1,4 @@
-# Representation CityGML Building Models into a Queryable Semantic-Spatial Scene Graph
+# 3DCitySG: Queryable Semantic-Spatial Scene Graphs from CityGML
 
 A Python-based research framework for constructing queryable semantic-spatial scene graphs from CityGML building models.
 
@@ -52,7 +52,7 @@ Current layout:
 | Scripts | `scripts/`, `scripts/retrieval/` | Public commands and retrieval experiment commands |
 | Docs | `docs/`, `docs/ovg/`, `docs/world_graph/`, `docs/retrieval/` | Research notes, command guides, result summaries |
 
-Detailed ownership: `docs/project_structure.md`.
+Detailed ownership: [docs/project_structure.md](docs/project_structure.md).
 
 ## 4. Current Key Modules
 
@@ -92,23 +92,37 @@ Important spatial/retrieval-facing relations:
 
 Detailed specs:
 
-1. `docs/spatial_relation_spec_v1.md`
-2. `docs/spatial_relation_v2_algorithm_notes.md`
-3. `docs/relation_definitions.md`
+1. [docs/spatial_relation_spec_v1.md](docs/spatial_relation_spec_v1.md)
+2. [docs/spatial_relation_v2_algorithm_notes.md](docs/spatial_relation_v2_algorithm_notes.md)
+3. [docs/relation_definitions.md](docs/relation_definitions.md)
 
 ## 6. Setup
 
-Install dependencies in your Python environment:
+Use Python **3.10 or newer**. From the repository root, install the package and development dependencies in your chosen Python environment:
 
 ```powershell
 python -m pip install -U pip
 ```
 
 ```powershell
-pip install -e .
+python -m pip install -e ".[dev]"
 ```
 
-Configure runtime settings in `configs/default.yaml` or pass another config with `--config`.
+Start with the bundled sample. This writes a graph JSON artifact without connecting to Neo4j:
+
+```powershell
+python scripts/run_import.py --input data/input/sample_citygml_v2.gml --output data/output/sample_import.json --config configs/default.yaml
+```
+
+Check the terminal conversion report and `data/output/sample_import.json`. Generated outputs are ignored by Git. Only the curated sample and FZK Haus inputs are included; E-type, SmartCity Lab, and other research datasets must be supplied locally.
+
+For Neo4j export, benchmarks, or retrieval, run Neo4j and create an ignored local configuration if one does not already exist:
+
+```powershell
+Copy-Item configs/default.yaml configs/default.local.yaml
+```
+
+Set your connection details in `configs/default.local.yaml` and pass `--config configs/default.local.yaml` to database commands. Keep credentials out of the tracked configuration files. The loader reads literal YAML values; it does not expand environment variables.
 
 Neo4j settings example:
 
@@ -132,33 +146,33 @@ spatial:
 
 ## 7. Quick Commands
 
-Command source-of-truth: `docs/command_cheatsheet.md`.
+Command source-of-truth: [docs/command_cheatsheet.md](docs/command_cheatsheet.md).
 
 Run E-type import and export to Neo4j:
 
 ```powershell
-python scripts/run_import.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --output data/output/e_type_import.json --to-neo4j --config configs/default.yaml
+python scripts/run_import.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --output data/output/e_type_import.json --to-neo4j --config configs/default.local.yaml
 ```
 
 Refresh latest E-type reports with Neo4j sync:
 
 ```powershell
-python scripts/refresh_latest_reports.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --config configs/default.yaml --dataset-tag "e_type_201dong_ifc4" --to-neo4j --skip-baseline
+python scripts/refresh_latest_reports.py --input "data/input/(210812)E-TYPE_201dong-IFC4.gml" --config configs/default.local.yaml --dataset-tag "e_type_201dong_ifc4" --to-neo4j --skip-baseline
 ```
 
 Run benchmark only:
 
 ```powershell
-python scripts/benchmark_queries.py --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
+python scripts/benchmark_queries.py --config configs/default.local.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
 ```
 
 Run E-type kitchen room retrieval from OVG JSON:
 
 ```powershell
-python scripts/retrieval/room_localization_queries.py --config configs/default.yaml --output data/output/e_type_kitchen_view_graph_query_report.json --scenario combined_room_score --limit 10 --view-graph docs/examples/observed_view_graph_kitchen.json
+python scripts/retrieval/room_localization_queries.py --config configs/default.local.yaml --output data/output/e_type_kitchen_view_graph_query_report.json --scenario combined_room_score --limit 10 --view-graph docs/examples/observed_view_graph_kitchen.json
 ```
 
-Regenerate retrieval result notes from raw JSON:
+Regenerate the optional local retrieval review after producing the raw JSON reports:
 
 ```powershell
 python scripts/retrieval/sync_room_retrieval_docs.py --output docs/retrieval/raw_json_sync_review_ko.md
@@ -176,18 +190,19 @@ python scripts/retrieval/sync_room_retrieval_docs.py --output docs/retrieval/raw
 
 Core evaluation docs:
 
-1. `docs/evaluation_scorecard.md`
-2. `docs/testing_and_scoring_guide.md`
-3. `docs/query_benchmark_guide.md`
-4. `docs/dataset_result_comparison.md`
-5. `docs/experiment_results.md`
-6. `docs/retrieval/raw_json_sync_review_ko.md`
+1. [docs/evaluation_scorecard.md](docs/evaluation_scorecard.md)
+2. [docs/testing_and_scoring_guide.md](docs/testing_and_scoring_guide.md)
+3. [docs/query_benchmark_guide.md](docs/query_benchmark_guide.md)
+4. [docs/dataset_result_comparison.md](docs/dataset_result_comparison.md)
+5. [docs/experiment_results.md](docs/experiment_results.md)
+6. [Room localization result notes](docs/room_localization_query_results.md)
 
 Raw output policy:
 
 1. `data/output/` is ignored by git.
 2. Latest numeric tables should be synchronized from raw JSON outputs.
 3. Historical result tables should be kept separate from latest result docs.
+4. `docs/retrieval/raw_json_sync_review_ko.md` is a generated local review, excluded from Git. It is not included in a fresh checkout.
 
 ## 10. Tests
 
@@ -213,14 +228,14 @@ Future domain tests should be added under:
 
 ## 11. Main Documentation
 
-1. Project structure: `docs/project_structure.md`
-2. Architecture: `docs/architecture.md`
-3. Command cheatsheet: `docs/command_cheatsheet.md`
-4. OVG domain: `docs/ovg/README.md`
-5. WorldGraph domain: `docs/world_graph/README.md`
-6. Retrieval domain: `docs/retrieval/README.md`
-7. Pipeline refactor review: `docs/pipeline_refactor_review.md`
-8. Paper outline mapping: `docs/paper_outline.md`
+1. Project structure: [docs/project_structure.md](docs/project_structure.md)
+2. Architecture: [docs/architecture.md](docs/architecture.md)
+3. Command cheatsheet: [docs/command_cheatsheet.md](docs/command_cheatsheet.md)
+4. OVG domain: [docs/ovg/README.md](docs/ovg/README.md)
+5. WorldGraph domain: [docs/world_graph/README.md](docs/world_graph/README.md)
+6. Retrieval domain: [docs/retrieval/README.md](docs/retrieval/README.md)
+7. Pipeline refactor review: [docs/pipeline_refactor_review.md](docs/pipeline_refactor_review.md)
+8. Paper outline mapping: [docs/paper_outline.md](docs/paper_outline.md)
 
 ## 12. Development Policy
 

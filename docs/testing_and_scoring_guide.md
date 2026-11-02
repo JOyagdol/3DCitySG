@@ -5,7 +5,7 @@ It is intended as an operational guide for developers and experiment operators.
 
 Command source of truth:
 
-1. `docs/command_cheatsheet.md`
+1. [docs/command_cheatsheet.md](command_cheatsheet.md)
 
 ## 1. Scope and Intent
 
@@ -18,11 +18,11 @@ This guide covers:
 
 This guide does not replace:
 
-1. relation policy details in `docs/relation_definitions.md`
-2. score policy source of truth in `docs/evaluation_scorecard.md`
-3. profiling-only focus in `docs/performance_profiling_guide.md`
-4. query benchmark details in `docs/query_benchmark_guide.md`
-5. detailed spatial-relation v2 algorithm notes in `docs/spatial_relation_v2_algorithm_notes.md`
+1. relation policy details in [docs/relation_definitions.md](relation_definitions.md)
+2. score policy source of truth in [docs/evaluation_scorecard.md](evaluation_scorecard.md)
+3. profiling-only focus in [docs/performance_profiling_guide.md](performance_profiling_guide.md)
+4. query benchmark details in [docs/query_benchmark_guide.md](query_benchmark_guide.md)
+5. detailed spatial-relation v2 algorithm notes in [docs/spatial_relation_v2_algorithm_notes.md](spatial_relation_v2_algorithm_notes.md)
 
 ## 2. Test System Overview
 
@@ -97,10 +97,10 @@ Current checks include:
 
 ### 3.4 How to Run
 
-Conda environment example:
+From the repository root, use Python 3.10 or newer with the development dependencies installed:
 
 ```powershell
-conda activate 3DCitySG
+python -m pip install -e ".[dev]"
 python -m pytest tests/test_pipeline_regression.py -q
 python -m pytest tests/test_spatial_priority.py -q
 python -m pytest tests/test_spatial_relation_pairs.py -q
@@ -291,7 +291,7 @@ If baseline check fails:
 When changing extraction logic, thresholds, or scoring semantics:
 
 1. update tests (`tests/*`) as needed
-2. update score policy docs (`docs/evaluation_scorecard.md`)
+2. update score policy docs ([docs/evaluation_scorecard.md](evaluation_scorecard.md))
 3. update this guide
 4. update runbook and baseline JSON if large-scale expected values changed
 

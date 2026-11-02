@@ -10,7 +10,7 @@ This project has two layers:
 | Package | Role |
 |---|---|
 | `app` | Pipeline orchestration, reporting helpers, and package CLI entry points |
-| `parsers` | Raw CityGML/CityJSON loading and namespace handling |
+| `parsers` | CityGML loading and namespace handling; preliminary CityJSON helpers are not part of the supported import pipeline |
 | `modules` | Object-family-specific parsing and mapping |
 | `extractors` | Geometry, bbox, centroid, and metadata extraction |
 | `relations` | Spatial relation inference, room-scoped candidate selection, and spatial edge generation |
@@ -35,6 +35,6 @@ This project has two layers:
 3. Root-level retrieval wrappers have been removed.
 4. `app/pipeline.py` remains the stable public orchestration entry point while reporting, scorecard, and spatial relation helpers are extracted behind compatible callbacks.
 
-Detailed file ownership: `docs/project_structure.md`.
-Command source-of-truth: `docs/command_cheatsheet.md`.
-Pipeline split plan: `docs/pipeline_refactor_review.md`.
+Detailed file ownership: [docs/project_structure.md](project_structure.md).
+Command source-of-truth: [docs/command_cheatsheet.md](command_cheatsheet.md).
+Pipeline split plan: [docs/pipeline_refactor_review.md](pipeline_refactor_review.md).

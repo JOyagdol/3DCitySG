@@ -8,8 +8,8 @@ It targets two goals:
 
 Detailed paper-oriented algorithm notes:
 
-1. English: `docs/spatial_relation_v2_algorithm_notes.md`
-2. Korean: `docs/spatial_relation_v2_algorithm_notes_ko.md`
+1. English: [docs/spatial_relation_v2_algorithm_notes.md](spatial_relation_v2_algorithm_notes.md)
+2. Korean: `docs/spatial_relation_v2_algorithm_notes_ko.md` (optional local paper notes; not tracked)
 
 Implementation source after v2 refactor:
 

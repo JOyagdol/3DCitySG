@@ -4,12 +4,12 @@ Baseline: CityGML 2.0 / spatial relations v1 (`INSIDE`, `CONNECTS`, `ADJACENT_TO
 
 Command source of truth:
 
-1. `docs/command_cheatsheet.md`
+1. [docs/command_cheatsheet.md](command_cheatsheet.md)
 
 Room-localization / view-graph matching query scenarios:
 
-1. `docs/room_localization_query_scenarios.md`
-2. Latest paper-oriented result notes: `docs/room_localization_query_results.md`
+1. [docs/room_localization_query_scenarios.md](room_localization_query_scenarios.md)
+2. Latest paper-oriented result notes: [docs/room_localization_query_results.md](room_localization_query_results.md)
 
 ## 1. Goal
 
@@ -68,7 +68,7 @@ Note: exception-focused query (`missing CONNECTS`) is intentionally excluded fro
 Command:
 
 ```bash
-python scripts/benchmark_queries.py --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
+python scripts/benchmark_queries.py --config configs/default.local.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
 ```
 
 For guaranteed DB sync before benchmark, run import with Neo4j export first (or use `scripts/refresh_latest_reports.py --to-neo4j`).
@@ -76,7 +76,7 @@ For guaranteed DB sync before benchmark, run import with Neo4j export first (or 
 Alternative:
 
 ```bash
-python -m citygml_sg.app.cli benchmark --config configs/default.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
+python -m citygml_sg.app.cli benchmark --config configs/default.local.yaml --output data/output/benchmark_report.json --warmup 1 --repeat 3
 ```
 
 ## 4. Recording Template

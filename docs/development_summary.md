@@ -72,10 +72,10 @@ Baseline date: 2026-05-15
    - hard tier (`H1..H5`)
    - scenario tier (`S1..S5`)
 9. Dataset-level result tracking document added:
-   - `docs/dataset_result_comparison.md`
+   - [docs/dataset_result_comparison.md](dataset_result_comparison.md)
 10. Paper-oriented spatial-relation v2 algorithm notes added:
-   - `docs/spatial_relation_v2_algorithm_notes.md`
-   - `docs/spatial_relation_v2_algorithm_notes_ko.md`
+   - [docs/spatial_relation_v2_algorithm_notes.md](spatial_relation_v2_algorithm_notes.md)
+   - `docs/spatial_relation_v2_algorithm_notes_ko.md` (optional local paper notes; not tracked)
 
 ### 2.5 Latest Execution Snapshot
 
@@ -124,4 +124,4 @@ Baseline date: 2026-05-15
 
 1. Review `CONNECTS` extraction behavior and decide whether to keep hard-tier queries that depend on it.
 2. Re-tune or split profiling baseline thresholds (`with Neo4j` vs `without Neo4j`) for stable gating.
-3. Continue dataset-by-dataset accumulation in `docs/dataset_result_comparison.md`.
+3. Continue dataset-by-dataset accumulation in [docs/dataset_result_comparison.md](dataset_result_comparison.md).

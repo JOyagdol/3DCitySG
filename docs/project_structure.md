@@ -48,24 +48,24 @@ Root-level retrieval wrappers and inactive relation/export stubs were removed. U
 | Path | Role |
 |---|---|
 | `README.md` | Project overview and quick start |
-| `docs/command_cheatsheet.md` | Single command source-of-truth |
-| `docs/project_structure.md` | Folder ownership and cleanup policy |
-| `docs/architecture.md` | Architecture summary |
-| `docs/ovg/README.md` | OVG domain notes |
-| `docs/world_graph/README.md` | WorldGraph and Anchor/Signature notes |
-| `docs/retrieval/README.md` | Retrieval domain notes |
-| `docs/pipeline_refactor_review.md` | Pipeline split risk map and refactor phases |
-| `docs/retrieval/raw_json_sync_review_ko.md` | Raw JSON source-of-truth for retrieval result tables |
-| `docs/room_localization_query_scenarios.md` | Scenario/query interpretation guide |
-| `docs/room_localization_query_results.md` | Paper-oriented room retrieval notes |
+| [docs/command_cheatsheet.md](command_cheatsheet.md) | Single command source-of-truth |
+| [docs/project_structure.md](project_structure.md) | Folder ownership and cleanup policy |
+| [docs/architecture.md](architecture.md) | Architecture summary |
+| [docs/ovg/README.md](ovg/README.md) | OVG domain notes |
+| [docs/world_graph/README.md](world_graph/README.md) | WorldGraph and Anchor/Signature notes |
+| [docs/retrieval/README.md](retrieval/README.md) | Retrieval domain notes |
+| [docs/pipeline_refactor_review.md](pipeline_refactor_review.md) | Pipeline split risk map and refactor phases |
+| `docs/retrieval/raw_json_sync_review_ko.md` | Optional generated local review of raw JSON reports; ignored by Git |
+| [docs/room_localization_query_scenarios.md](room_localization_query_scenarios.md) | Scenario/query interpretation guide |
+| [docs/room_localization_query_results.md](room_localization_query_results.md) | Paper-oriented room retrieval notes |
 
 ## 5. Result and History Policy
 
 1. `data/output/` is ignored by git and is the raw experiment output location.
 2. Retrieval result numbers should be synchronized from raw JSON reports.
-3. Current retrieval sync source is `docs/retrieval/raw_json_sync_review_ko.md`.
+3. Raw JSON reports are the source of truth. `scripts/retrieval/sync_room_retrieval_docs.py` generates an optional local review at `docs/retrieval/raw_json_sync_review_ko.md`; this review is not included in a fresh checkout.
 4. Historical result tables should live in history/archive docs, not in latest result docs.
-5. Korean paper notes are local-only according to `.gitignore`, but should still be kept current for writing.
+5. Paper notes named `*_ko.md` and private research state are local-only according to `.gitignore`, but should still be kept current for writing. Shared domain READMEs remain tracked regardless of their language.
 
 ## 6. Cleanup Policy
 
@@ -76,7 +76,7 @@ Root-level retrieval wrappers and inactive relation/export stubs were removed. U
 5. Use `scripts/retrieval/...` as the only documented retrieval command path.
 6. Generated cache folders such as `__pycache__/` and `.pytest_cache/` are ignored and can be removed locally, but they are not part of source cleanup.
 7. Keep inactive placeholder files out of active source folders unless they have a documented owner and promotion path.
-8. Follow `docs/pipeline_refactor_review.md` before changing memory, streaming, or checkpoint behavior.
+8. Follow [docs/pipeline_refactor_review.md](pipeline_refactor_review.md) before changing memory, streaming, or checkpoint behavior.
 
 ## 7. Current Extracted Core Modules
 

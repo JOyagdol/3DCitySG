@@ -3,7 +3,7 @@
 Baseline: CityGML 2.0 building-centric pipeline  
 Purpose: paper-oriented explanation of how v2 spatial relations are computed, why the rules exist, and how to interpret edge outputs.
 
-This document is the detailed companion to `docs/spatial_relation_spec_v1.md`.
+This document is the detailed companion to [docs/spatial_relation_spec_v1.md](spatial_relation_spec_v1.md).
 
 Implementation source:
 

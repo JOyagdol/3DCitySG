@@ -1,4 +1,4 @@
-﻿> Latest retrieval numbers should be read from docs/retrieval/raw_json_sync_review_ko.md first. Some legacy tables in this document may still contain older heuristic values until the raw-JSON sync script regenerates them.
+﻿> Check retrieval numbers against the raw JSON reports in `data/output/`. The optional review `docs/retrieval/raw_json_sync_review_ko.md` is generated locally by `scripts/retrieval/sync_room_retrieval_docs.py` and is not tracked. Legacy tables below may predate the latest local runs.
 
 # v1 Experiment Results (Latest Only)
 
@@ -78,9 +78,9 @@ Source file: `data/output/import_summary.json`
 
 Source:
 
-1. Detailed paper notes: `docs/room_localization_query_results.md`
+1. Detailed paper notes: [docs/room_localization_query_results.md](room_localization_query_results.md)
 2. Raw report: `data/output/e_type_kitchen_view_query_report.json`
-3. Scenario guide: `docs/room_localization_query_scenarios.md`
+3. Scenario guide: [docs/room_localization_query_scenarios.md](room_localization_query_scenarios.md)
 
 Current scenario:
 

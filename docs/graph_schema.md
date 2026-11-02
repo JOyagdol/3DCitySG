@@ -4,9 +4,9 @@ Nodes are stored with base label `CityObject` plus type labels and `node_type` p
 
 Spatial-relation computation details:
 
-1. `docs/spatial_relation_spec_v1.md`
-2. `docs/spatial_relation_v2_algorithm_notes.md`
-3. `docs/spatial_relation_v2_algorithm_notes_ko.md`
+1. [docs/spatial_relation_spec_v1.md](spatial_relation_spec_v1.md)
+2. [docs/spatial_relation_v2_algorithm_notes.md](spatial_relation_v2_algorithm_notes.md)
+3. `docs/spatial_relation_v2_algorithm_notes_ko.md` (optional local paper notes; not tracked)
 
 ## Core Relation Families
 

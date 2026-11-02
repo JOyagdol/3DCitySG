@@ -42,7 +42,7 @@ Before and after each refactor step, compare:
 6. Neo4j benchmark query counts when Neo4j is used.
 7. Retrieval scenario top-k room candidates when retrieval output is affected.
 
-Recommended smoke commands are documented in `docs/command_cheatsheet.md`.
+Recommended smoke commands are documented in [docs/command_cheatsheet.md](command_cheatsheet.md).
 
 ## 4. Recommended Refactor Phases
 

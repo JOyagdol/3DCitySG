@@ -40,13 +40,13 @@ Current script role:
 2. `scripts/retrieval/profile_room_localization_stages.py`
    - `SCENARIOS` registry를 재사용하고, stage/component timing probe를 수행한다.
 3. `scripts/retrieval/sync_room_retrieval_docs.py`
-   - raw JSON report에서 `docs/retrieval/raw_json_sync_review_ko.md`를 재생성한다.
+   - raw JSON report에서 로컬 검토 문서 `docs/retrieval/raw_json_sync_review_ko.md`를 재생성한다. 이 생성 문서는 Git에 포함하지 않는다.
 4. Retrieval commands use `scripts/retrieval/...` only.
 
 결과 수치 기준:
 
 1. 최신 retrieval 수치의 source-of-truth는 raw JSON report이다.
-2. raw JSON 기준 재동기화 검토 문서는 `docs/retrieval/raw_json_sync_review_ko.md`이다.
+2. raw JSON 기준 재동기화 검토 문서 `docs/retrieval/raw_json_sync_review_ko.md`는 선택적으로 생성하는 로컬 문서이며 새 checkout에는 포함되지 않는다.
 3. 새 명령어 문서는 `scripts/retrieval/...` 기준으로 작성한다.
 
 완료된 구조 정리:

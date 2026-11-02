@@ -1,4 +1,4 @@
-﻿> Latest retrieval numbers should be read from docs/retrieval/raw_json_sync_review_ko.md first. Some legacy tables in this document may still contain older heuristic values until the raw-JSON sync script regenerates them.
+﻿> Check retrieval numbers against the raw JSON reports in `data/output/`. The optional review `docs/retrieval/raw_json_sync_review_ko.md` is generated locally by `scripts/retrieval/sync_room_retrieval_docs.py` and is not tracked. Legacy tables below may predate the latest local runs.
 
 # Dataset Result Comparison Tracker (Latest Only)
 
@@ -16,7 +16,7 @@ Purpose:
 Recommended command:
 
 ```powershell
-conda run -n 3DCitySG python scripts/refresh_latest_reports.py --input "<input.gml>" --config configs/default.yaml --dataset-tag "<dataset_tag>" --to-neo4j
+python scripts/refresh_latest_reports.py --input "<input.gml>" --config configs/default.local.yaml --dataset-tag "<dataset_tag>" --to-neo4j
 ```
 
 ## 2) Latest Comparison Table
@@ -41,7 +41,7 @@ Notes:
 Source:
 
 1. `data/output/e_type_kitchen_view_query_report.json`
-2. `docs/room_localization_query_results.md`
+2. [docs/room_localization_query_results.md](room_localization_query_results.md)
 
 Latest recorded room-localization query:
 

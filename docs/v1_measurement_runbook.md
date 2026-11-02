@@ -3,9 +3,9 @@
 This runbook defines reproducible steps for generating latest benchmark and profiling outputs.
 
 Command source of truth:
-1. `docs/command_cheatsheet.md`
+1. [docs/command_cheatsheet.md](command_cheatsheet.md)
 
-History documents:
+Optional local history documents (ignored by Git):
 1. `docs/experiment_results_history.md`
 2. `docs/dataset_result_history.md`
 
@@ -18,31 +18,31 @@ History documents:
 ## 2. Prerequisites
 
 1. Project root:
-   - `C:\Users\OKLab\Desktop\AIDT Lab\City Scene Understanding\3DCitySG`
-2. Conda environment:
-   - `3DCitySG`
+   - run commands from your local repository directory
+2. Python environment:
+   - Python 3.10 or newer with `python -m pip install -e ".[dev]"`
 3. Neo4j:
    - running locally
-   - matches `configs/default.yaml`
+   - matches the connection details in ignored `configs/default.local.yaml` (see the [setup guide](../README.md#6-setup))
 
 ## 3. Workflow
 
-Use this runbook for sequence only. Use `docs/command_cheatsheet.md` for exact commands.
+Use this runbook for sequence only. Use [docs/command_cheatsheet.md](command_cheatsheet.md) for exact commands.
 
 1. Run `refresh_latest_reports.py` with dataset tag.
 2. Verify:
    - benchmark `query_failed=0`
    - profile `runs_failed=0`
 3. Update latest-only docs.
-4. Move replaced rows/sections to history docs.
+4. Move replaced rows/sections to local history docs.
 
 ## 4. Completion Checklist
 
 1. `Import complete` in logs
 2. Latest artifacts are timestamped with dataset tag
 3. Latest docs updated:
-   - `docs/experiment_results.md`
-   - `docs/dataset_result_comparison.md`
+   - [docs/experiment_results.md](experiment_results.md)
+   - [docs/dataset_result_comparison.md](dataset_result_comparison.md)
 4. Old values moved:
    - `docs/experiment_results_history.md`
    - `docs/dataset_result_history.md`

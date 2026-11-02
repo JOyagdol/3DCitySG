@@ -2,10 +2,10 @@
 
 Reference:
 
-1. Spatial relation implementation policy: `docs/spatial_relation_spec_v1.md`
-2. Algorithm details (v2): `Implemented Algorithms (v2, relation-by-relation)` section in `docs/spatial_relation_spec_v1.md`
-3. Paper-oriented algorithm explanation: `docs/spatial_relation_v2_algorithm_notes.md`
-4. Korean paper-oriented notes: `docs/spatial_relation_v2_algorithm_notes_ko.md`
+1. Spatial relation implementation policy: [docs/spatial_relation_spec_v1.md](spatial_relation_spec_v1.md)
+2. Algorithm details (v2): `Implemented Algorithms (v2, relation-by-relation)` section in [docs/spatial_relation_spec_v1.md](spatial_relation_spec_v1.md)
+3. Paper-oriented algorithm explanation: [docs/spatial_relation_v2_algorithm_notes.md](spatial_relation_v2_algorithm_notes.md)
+4. Korean paper-oriented notes: `docs/spatial_relation_v2_algorithm_notes_ko.md` (optional local paper notes; not tracked)
 
 ## Semantic and Geometry Relations
 
