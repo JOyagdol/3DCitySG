@@ -39,7 +39,8 @@ The original CityGML import pipeline remains stable, while new retrieval-facing 
 | `scripts/check_large_scale_baseline.py` | Baseline validation | Keep as public stable command |
 | `scripts/retrieval/` | Canonical retrieval experiment scripts | Use for all retrieval commands |
 | `scripts/ovg/` | Future OVG command location | Placeholder, no active script yet |
-| `scripts/world_graph/` | Future RoomSignature/AnchorGraph command location | Placeholder, no active script yet |
+| `scripts/world_graph/` | Local room-dashboard data generator; future RoomSignature/AnchorGraph commands | Generated JSON stays local |
+| `web/etype_room_dashboard/` | Static room geometry viewer | Local research/debugging tool; no hosted deployment |
 
 Root-level retrieval wrappers and inactive relation/export stubs were removed. Use `scripts/retrieval/...` for retrieval commands and `scripts/run_import.py` or `scripts/benchmark_queries.py` for core graph runs.
 

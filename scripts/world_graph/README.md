@@ -1,6 +1,6 @@
 ﻿# World Graph Scripts
 
-이 폴더는 향후 WorldGraph/AnchorGraph 전용 CLI를 둘 위치이다.
+이 폴더는 WorldGraph 로컬 시각화와 향후 AnchorGraph 전용 CLI를 관리한다.
 
 현재 stable public commands는 root `scripts/`에 유지한다.
 
@@ -25,7 +25,7 @@ python scripts/world_graph/build_etype_room_dashboard_data.py --input data/outpu
 ```
 
 ```powershell
-python -m http.server 8765 --directory web/etype_room_dashboard
+python -m http.server 8765 --bind 127.0.0.1 --directory web/etype_room_dashboard
 ```
 
 추가 예정:

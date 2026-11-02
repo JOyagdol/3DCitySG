@@ -1,4 +1,4 @@
-﻿> Check retrieval numbers against the raw JSON reports in `data/output/`. The optional review `docs/retrieval/raw_json_sync_review_ko.md` is generated locally by `scripts/retrieval/sync_room_retrieval_docs.py` and is not tracked. Legacy tables below may predate the latest local runs.
+> Check retrieval numbers against the raw JSON reports in `data/output/`. The optional review `docs/retrieval/raw_json_sync_review_ko.md` is generated locally by `scripts/retrieval/sync_room_retrieval_docs.py` and is not tracked. Legacy tables below may predate the latest local runs.
 
 # Room Localization Cypher Scenario Guide
 
@@ -46,10 +46,10 @@ Run the SmartCity Lab window/boundary view scenario:
 python scripts/retrieval/room_localization_queries.py --config configs/default.local.yaml --output data/output/smartcity_lab_corridor_window_query_report.json --scenario opening_boundary_room_score --view-graph docs/examples/observed_view_graph_smartcity_corridor_window.json
 ```
 
-Run the E-type 30-case retrieval test suite:
+Run the provisional E-type 30-case retrieval test suite (see [known evaluation limitations](retrieval/README.md#current-evaluation-limitations)):
 
 ```powershell
-python scripts/retrieval/run_room_retrieval_suite.py --suite docs/examples/e_type_room_retrieval_30case_suite.json --config configs/default.yaml --output data/output/e_type_room_retrieval_30case_suite_report.json --top-k 3 --recall-k 1 3 5
+python scripts/retrieval/run_room_retrieval_suite.py --suite docs/examples/e_type_room_retrieval_30case_suite.json --config configs/default.local.yaml --output data/output/e_type_room_retrieval_30case_suite_report.json --top-k 3 --recall-k 1 3 5
 ```
 
 ## 3) Scenario Set

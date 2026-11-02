@@ -2,6 +2,8 @@
 
 이 폴더는 room retrieval 실험과 측정에 사용하는 canonical CLI script를 관리한다.
 
+30-case suite는 임시 평가 도구이다. 실행·해석 전에 [현재 평가 한계](../../docs/retrieval/README.md#current-evaluation-limitations)를 확인한다.
+
 Canonical scripts:
 
 1. `room_localization_queries.py`

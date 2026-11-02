@@ -4,6 +4,8 @@ A Python-based research framework for constructing queryable semantic-spatial sc
 
 Current baseline: **CityGML 2.0 building-focused pipeline**.
 
+Room retrieval currently uses scenario-specific heuristic scores. The 30-case suite is a provisional evaluation harness; see the [known evaluation limitations](docs/retrieval/README.md#current-evaluation-limitations) before interpreting ablations or aggregate metrics.
+
 ## 1. Purpose
 
 CityGML contains semantic hierarchy and geometry, but downstream query, benchmark, and localization tasks need an explicit graph representation. This project converts CityGML building models into a semantic-spatial scene graph and supports Neo4j-based analysis workflows.
@@ -50,6 +52,7 @@ Current layout:
 | WorldGraph | `src/citygml_sg/world_graph/` | RoomSignature, RoomAnchor, and future precomputed anchor features |
 | Retrieval | `src/citygml_sg/retrieval/` | Cypher templates, scoring params, graph matching, result reporting |
 | Scripts | `scripts/`, `scripts/retrieval/` | Public commands and retrieval experiment commands |
+| Local viewer | `scripts/world_graph/`, `web/etype_room_dashboard/` | Generate and inspect room geometry from local graph JSON |
 | Docs | `docs/`, `docs/ovg/`, `docs/world_graph/`, `docs/retrieval/` | Research notes, command guides, result summaries |
 
 Detailed ownership: [docs/project_structure.md](docs/project_structure.md).
@@ -184,7 +187,7 @@ python scripts/retrieval/sync_room_retrieval_docs.py --output docs/retrieval/raw
 2. Retrieval experiment commands are canonical under `scripts/retrieval/`.
 3. Root-level retrieval wrappers have been removed.
 4. Future OVG commands should go under `scripts/ovg/`.
-5. Future WorldGraph/RoomSignature commands should go under `scripts/world_graph/`.
+5. WorldGraph commands live under `scripts/world_graph/`; see the [local dashboard guide](scripts/world_graph/README.md) for the current geometry viewer. Generated dashboard data stays local.
 
 ## 9. Evaluation and Results
 

@@ -164,10 +164,10 @@ Evaluate E-type retrieval metrics:
 python scripts/retrieval/evaluate_room_retrieval_metrics.py --case-file docs/examples/e_type_room_retrieval_eval_cases.json --output data/output/e_type_room_retrieval_metrics.json --top-k 3 --recall-k 1 3 5
 ```
 
-Run the E-type 30-case retrieval suite:
+Run the provisional E-type 30-case retrieval suite (see [known evaluation limitations](retrieval/README.md#current-evaluation-limitations)):
 
 ```powershell
-python scripts/retrieval/run_room_retrieval_suite.py --suite docs/examples/e_type_room_retrieval_30case_suite.json --config configs/default.yaml --output data/output/e_type_room_retrieval_30case_suite_report.json --top-k 3 --recall-k 1 3 5
+python scripts/retrieval/run_room_retrieval_suite.py --suite docs/examples/e_type_room_retrieval_30case_suite.json --config configs/default.local.yaml --output data/output/e_type_room_retrieval_30case_suite_report.json --top-k 3 --recall-k 1 3 5
 ```
 
 Regenerate the optional local retrieval result note from raw JSON reports (the note is ignored by Git and is not included in a fresh checkout):
