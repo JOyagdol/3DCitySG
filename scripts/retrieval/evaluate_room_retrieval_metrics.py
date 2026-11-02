@@ -12,7 +12,7 @@ from typing import Any
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Compute Top-1, Top-K, mean rank, MRR, and retrieval time from room query reports."
+        description="Compute Recall@K, Top-1, Top-K, mean rank, MRR, and retrieval time from room query reports."
     )
     parser.add_argument(
         "--case",
@@ -31,6 +31,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Scenario id to evaluate when a report contains multiple scenarios. Defaults to the first scenario.",
     )
     parser.add_argument("--top-k", type=int, default=3, help="Top-K inclusion threshold. Default: 3.")
+    parser.add_argument(
+        "--recall-k",
+        nargs="*",
+        type=int,
+        default=[1, 3, 5],
+        help="Recall@K thresholds to report. Defaults to 1 3 5. top-k is always included.",
+    )
     parser.add_argument("--output", type=Path, required=True, help="Path to write the evaluation JSON report.")
     return parser
 
@@ -103,7 +110,19 @@ def _find_target_rank(rows: list[dict[str, Any]], target_room: str) -> int | Non
     return None
 
 
-def _evaluate_case(case: dict[str, str], *, top_k: int, default_scenario_id: str | None) -> dict[str, Any]:
+def _normalize_recall_k_values(values: list[int] | None, *, top_k: int) -> tuple[int, ...]:
+    recall_values = set([1, 3, 5] if values is None else values)
+    recall_values.update({1, int(top_k)})
+    return tuple(sorted(value for value in recall_values if int(value) >= 1))
+
+
+def _evaluate_case(
+    case: dict[str, str],
+    *,
+    top_k: int,
+    recall_k_values: tuple[int, ...],
+    default_scenario_id: str | None,
+) -> dict[str, Any]:
     report_path = Path(case["report_path"])
     report = _read_json(report_path)
     scenario_id = case.get("scenario_id") or default_scenario_id
@@ -117,6 +136,7 @@ def _evaluate_case(case: dict[str, str], *, top_k: int, default_scenario_id: str
     row_count = len(rows)
     penalized_rank = rank if rank is not None else row_count + 1
     reciprocal_rank = 0.0 if rank is None else 1.0 / rank
+    recall_hits = {k: rank is not None and rank <= k for k in recall_k_values}
     query_elapsed_ms = scenario.get("query_elapsed_ms", scenario.get("elapsed_ms"))
     total_elapsed_ms = None
     summary = report.get("summary")
@@ -124,7 +144,7 @@ def _evaluate_case(case: dict[str, str], *, top_k: int, default_scenario_id: str
         total_elapsed_ms = summary.get("total_elapsed_ms")
     top_room = rows[0] if rows else None
 
-    return {
+    result = {
         "case_id": case["case_id"],
         "report_path": str(report_path),
         "scenario_id": str(scenario.get("id", scenario_id or "")),
@@ -134,6 +154,7 @@ def _evaluate_case(case: dict[str, str], *, top_k: int, default_scenario_id: str
         "target_found": rank is not None,
         "top1_correct": rank == 1,
         f"top{top_k}_included": rank is not None and rank <= top_k,
+        "recall_at": {str(k): recall_hits[k] for k in recall_k_values},
         "reciprocal_rank": round(reciprocal_rank, 6),
         "retrieval_time_ms": query_elapsed_ms,
         "total_elapsed_ms": total_elapsed_ms,
@@ -144,6 +165,9 @@ def _evaluate_case(case: dict[str, str], *, top_k: int, default_scenario_id: str
             "total_score": top_room.get("total_score") if isinstance(top_room, dict) else None,
         },
     }
+    for k, hit in recall_hits.items():
+        result[f"recall_at_{k}"] = hit
+    return result
 
 
 def _average_numeric(values: list[Any]) -> float | None:
@@ -164,34 +188,54 @@ def main() -> int:
     args = build_parser().parse_args()
     if args.top_k < 1:
         raise ValueError("--top-k must be >= 1")
+    recall_k_values = _normalize_recall_k_values(args.recall_k, top_k=args.top_k)
 
     cases = _load_cases(args)
     evaluated = [
-        _evaluate_case(case, top_k=args.top_k, default_scenario_id=args.scenario_id)
+        _evaluate_case(
+            case,
+            top_k=args.top_k,
+            recall_k_values=recall_k_values,
+            default_scenario_id=args.scenario_id,
+        )
         for case in cases
     ]
     case_count = len(evaluated)
-    top1_count = sum(1 for item in evaluated if item["top1_correct"])
-    topk_key = f"top{args.top_k}_included"
-    topk_count = sum(1 for item in evaluated if item[topk_key])
+    recall_counts = {
+        k: sum(1 for item in evaluated if item.get(f"recall_at_{k}", False))
+        for k in recall_k_values
+    }
+    top1_count = recall_counts.get(1, sum(1 for item in evaluated if item["top1_correct"]))
+    topk_count = recall_counts.get(
+        args.top_k,
+        sum(1 for item in evaluated if item.get(f"top{args.top_k}_included")),
+    )
     mrr = mean(float(item["reciprocal_rank"]) for item in evaluated)
     mean_rank = mean(float(item["target_rank_for_mean"]) for item in evaluated)
 
+    summary = {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "case_count": case_count,
+        "top_k": args.top_k,
+        "recall_k": list(recall_k_values),
+        "top1_room_accuracy": round(top1_count / case_count, 6),
+        "top1_room_accuracy_pct": round((top1_count / case_count) * 100.0, 3),
+        f"top{args.top_k}_room_inclusion": round(topk_count / case_count, 6),
+        f"top{args.top_k}_room_inclusion_pct": round((topk_count / case_count) * 100.0, 3),
+        "mean_target_room_rank": round(mean_rank, 3),
+        "mrr": round(mrr, 6),
+        "retrieval_time_ms_mean": _average_numeric([item["retrieval_time_ms"] for item in evaluated]),
+        "retrieval_time_ms_total": _sum_numeric([item["retrieval_time_ms"] for item in evaluated]),
+        "total_elapsed_ms_mean": _average_numeric([item["total_elapsed_ms"] for item in evaluated]),
+        "total_elapsed_ms_total": _sum_numeric([item["total_elapsed_ms"] for item in evaluated]),
+    }
+    for k, count in recall_counts.items():
+        summary[f"recall_at_{k}"] = round(count / case_count, 6)
+        summary[f"recall_at_{k}_pct"] = round((count / case_count) * 100.0, 3)
+
     report = {
         "summary": {
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "case_count": case_count,
-            "top_k": args.top_k,
-            "top1_room_accuracy": round(top1_count / case_count, 6),
-            "top1_room_accuracy_pct": round((top1_count / case_count) * 100.0, 3),
-            f"top{args.top_k}_room_inclusion": round(topk_count / case_count, 6),
-            f"top{args.top_k}_room_inclusion_pct": round((topk_count / case_count) * 100.0, 3),
-            "mean_target_room_rank": round(mean_rank, 3),
-            "mrr": round(mrr, 6),
-            "retrieval_time_ms_mean": _average_numeric([item["retrieval_time_ms"] for item in evaluated]),
-            "retrieval_time_ms_total": _sum_numeric([item["retrieval_time_ms"] for item in evaluated]),
-            "total_elapsed_ms_mean": _average_numeric([item["total_elapsed_ms"] for item in evaluated]),
-            "total_elapsed_ms_total": _sum_numeric([item["total_elapsed_ms"] for item in evaluated]),
+            **summary,
         },
         "cases": evaluated,
     }
@@ -201,8 +245,8 @@ def main() -> int:
     print(f"Room-retrieval metrics report written: {args.output}")
     print(
         "Metrics: "
-        f"top1={report['summary']['top1_room_accuracy_pct']}% "
-        f"top{args.top_k}={report['summary'][f'top{args.top_k}_room_inclusion_pct']}% "
+        f"recall@1={report['summary']['recall_at_1_pct']}% "
+        f"recall@{args.top_k}={report['summary'][f'recall_at_{args.top_k}_pct']}% "
         f"mean_rank={report['summary']['mean_target_room_rank']} "
         f"mrr={report['summary']['mrr']} "
         f"retrieval_time_mean={report['summary']['retrieval_time_ms_mean']}ms"

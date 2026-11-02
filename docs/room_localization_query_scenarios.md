@@ -46,6 +46,12 @@ Run the SmartCity Lab window/boundary view scenario:
 python scripts/retrieval/room_localization_queries.py --config configs/default.local.yaml --output data/output/smartcity_lab_corridor_window_query_report.json --scenario opening_boundary_room_score --view-graph docs/examples/observed_view_graph_smartcity_corridor_window.json
 ```
 
+Run the E-type 30-case retrieval test suite:
+
+```powershell
+python scripts/retrieval/run_room_retrieval_suite.py --suite docs/examples/e_type_room_retrieval_30case_suite.json --config configs/default.yaml --output data/output/e_type_room_retrieval_30case_suite_report.json --top-k 3 --recall-k 1 3 5
+```
+
 ## 3) Scenario Set
 
 1. `room_inventory`: per-room furniture/opening inventory.
@@ -55,6 +61,77 @@ python scripts/retrieval/room_localization_queries.py --config configs/default.l
 5. `furniture_pair_relation`: sofa-table style pair relation inspection.
 6. `opening_boundary_room_score`: furniture-sparse corridor/lab-view ranking using window, door, wall/floor boundary, wall-floor topology, and room-installation evidence.
 7. `combined_room_score`: combined ranking using object, door, floor-attachment, and furniture-pair evidence.
+
+## 3.1) Room Retrieval Test Suite
+
+Purpose:
+
+1. Evaluate how little observed information is sufficient for room matching.
+2. Compare room retrieval under different view angles or occlusion patterns.
+3. Test furniture-sparse spaces using opening, wall, floor, and topology cues.
+4. Test furnished spaces using furniture object and furniture-relation cues.
+
+Seed suite:
+
+```text
+docs/examples/e_type_room_retrieval_30case_suite.json
+```
+
+The seed suite contains 30 E-type cases:
+
+1. `furnished`: kitchen/living views with furniture evidence.
+2. `sparse`: empty/window room views with opening and boundary evidence.
+3. `minimal_info`: one-object or boundary-only ablations.
+4. `view_variation`: same target room under partial/occluded view variants.
+
+Case schema:
+
+```json
+{
+  "case_id": "minimal_living_tv_only",
+  "group": "minimal_info",
+  "viewpoint": "single_cue",
+  "scenario_id": "combined_room_score",
+  "view_graph": "docs/examples/observed_view_graph_e_type_living_tv_sofa.json",
+  "target_room": "E102",
+  "variant": {
+    "keep_categories": ["tv"],
+    "max_objects": 1,
+    "include_relations": false
+  }
+}
+```
+
+Variant fields:
+
+1. `keep_categories`: keep only selected observed object categories.
+2. `drop_categories`: remove selected categories.
+3. `max_objects`: keep only the first N objects after filtering.
+4. `include_relations`: keep or remove observed relations.
+5. `max_relations`: keep only the first N relations after filtering.
+6. `param_overrides`: override Cypher parameters such as `door_weight`, `min_doors`, or `min_windows`.
+
+Suite output:
+
+```text
+data/output/e_type_room_retrieval_30case_suite_report.json
+```
+
+Key metrics:
+
+1. `Recall@1`: target room ranked first. This is equivalent to `Top-1 Room Accuracy`.
+2. `Recall@3`: target room is within the top 3. This is equivalent to `Top-3 Room Inclusion`.
+3. `Recall@5`: target room is within the top 5. This is useful when the world graph produces near-tie candidates.
+4. `Mean Target Room Rank`: average target rank, with missed targets penalized as `row_count + 1`.
+5. `MRR`: mean reciprocal rank.
+6. `Retrieval Time`: Neo4j query + ranking time per case.
+
+Interpretation:
+
+1. High `minimal_info` performance means a small number of object/opening cues can localize the room.
+2. High `view_variation` performance means the same room remains retrievable under partial or changed views.
+3. Low `sparse` performance indicates that opening/boundary/topology cues are not yet distinctive enough and should move toward expected-view-graph or RoomSignature matching.
+4. Low `furnished` performance indicates object category mapping or furniture-relation scoring needs improvement.
 
 ## 4) View Graph Schema Concept
 

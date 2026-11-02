@@ -16,6 +16,7 @@ Canonical scripts:
 1. `scripts/retrieval/room_localization_queries.py`
 2. `scripts/retrieval/profile_room_localization_stages.py`
 3. `scripts/retrieval/evaluate_room_retrieval_metrics.py`
+4. `scripts/retrieval/run_room_retrieval_suite.py`
 
 Current reusable modules:
 
@@ -28,10 +29,12 @@ Current reusable modules:
 3. `src/citygml_sg/retrieval/scoring/view_params.py`
    - room retrieval 기본 parameter와 observed view graph 기반 parameter 조립 로직을 관리한다.
 4. `src/citygml_sg/retrieval/reporting/json_safe.py`
-   - Neo4j record/result를 JSON report로 쓰기 전에 안전한 dict/list/scalar 형태로 변환한다.
+    - Neo4j record/result를 JSON report로 쓰기 전에 안전한 dict/list/scalar 형태로 변환한다.
 5. `src/citygml_sg/retrieval/graph_matching/signature_similarity.py`
-   - OVG feature count와 `RoomSignature` 사이의 normalized overlap score를 계산한다.
-   - 현재는 helper 수준이며, query runner에는 아직 연결하지 않았다.
+    - OVG feature count와 `RoomSignature` 사이의 normalized overlap score를 계산한다.
+    - 현재는 helper 수준이며, query runner에는 아직 연결하지 않았다.
+6. `src/citygml_sg/retrieval/evaluation/room_retrieval_suite.py`
+   - 여러 OVG case를 반복 실행할 때 필요한 ablation, target-rank 평가, Recall@K/Top-K/MRR/time 집계를 관리한다.
 
 Current script role:
 
@@ -41,7 +44,10 @@ Current script role:
    - `SCENARIOS` registry를 재사용하고, stage/component timing probe를 수행한다.
 3. `scripts/retrieval/sync_room_retrieval_docs.py`
    - raw JSON report에서 로컬 검토 문서 `docs/retrieval/raw_json_sync_review_ko.md`를 재생성한다. 이 생성 문서는 Git에 포함하지 않는다.
-4. Retrieval commands use `scripts/retrieval/...` only.
+4. `scripts/retrieval/run_room_retrieval_suite.py`
+   - suite JSON을 읽어 Neo4j room retrieval query를 반복 실행하고 Recall@1/3/5, Top-1/Top-3, MRR/time을 집계한다.
+   - 최소 단서, multi-view 변형, 가구 없는 희소 공간, 가구 있는 공간을 같은 평가 구조로 비교한다.
+5. Retrieval commands use `scripts/retrieval/...` only.
 
 결과 수치 기준:
 
@@ -57,6 +63,7 @@ Current script role:
 4. Room localization Cypher query/scenario registry 분리.
 5. Raw JSON 기반 retrieval 결과 문서 sync script 추가.
 6. RoomSignature/RoomAnchor interface와 signature similarity helper 추가.
+7. E-type 30-case room retrieval seed suite와 suite runner 추가.
 
 다음 구현 대상:
 

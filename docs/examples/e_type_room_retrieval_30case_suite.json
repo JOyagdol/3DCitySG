@@ -1,0 +1,285 @@
+{
+  "suite_id": "e_type_room_retrieval_30case_seed_v1",
+  "dataset": "e_type_201dong_ifc4",
+  "default_limit": 10,
+  "purpose": "Evaluate room retrieval under furnished, sparse, minimal-information, and view-variation conditions.",
+  "cases": [
+    {
+      "case_id": "furnished_kitchen_full",
+      "group": "furnished",
+      "viewpoint": "kitchen_front_full",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_kitchen.json",
+      "target_room": "E103",
+      "description": "Full kitchen-like cue set: storage, fridge, weak sofa/table, and door."
+    },
+    {
+      "case_id": "furnished_kitchen_core_objects",
+      "group": "furnished",
+      "viewpoint": "kitchen_core",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_kitchen.json",
+      "target_room": "E103",
+      "variant": {"keep_categories": ["storage", "fridge"]}
+    },
+    {
+      "case_id": "furnished_kitchen_fridge_only",
+      "group": "furnished",
+      "viewpoint": "kitchen_single_object",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_kitchen.json",
+      "target_room": "E103",
+      "variant": {"keep_categories": ["fridge"], "include_relations": false}
+    },
+    {
+      "case_id": "furnished_kitchen_storage_only",
+      "group": "furnished",
+      "viewpoint": "kitchen_single_object",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_kitchen.json",
+      "target_room": "E103",
+      "variant": {"keep_categories": ["storage"], "include_relations": false}
+    },
+    {
+      "case_id": "furnished_kitchen_no_door",
+      "group": "furnished",
+      "viewpoint": "kitchen_occluded_door",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_kitchen.json",
+      "target_room": "E103",
+      "variant": {"drop_categories": ["door"]},
+      "param_overrides": {"door_weight": 0.0}
+    },
+    {
+      "case_id": "furnished_living_full",
+      "group": "furnished",
+      "viewpoint": "living_front_full",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_living_tv_sofa.json",
+      "target_room": "E102"
+    },
+    {
+      "case_id": "furnished_living_tv_sofa_table",
+      "group": "furnished",
+      "viewpoint": "living_core_objects",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_living_tv_sofa.json",
+      "target_room": "E102",
+      "variant": {"keep_categories": ["tv", "sofa", "table"]}
+    },
+    {
+      "case_id": "furnished_living_tv_only",
+      "group": "furnished",
+      "viewpoint": "living_single_object",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_living_tv_sofa.json",
+      "target_room": "E102",
+      "variant": {"keep_categories": ["tv"], "include_relations": false}
+    },
+    {
+      "case_id": "furnished_living_sofa_table",
+      "group": "furnished",
+      "viewpoint": "living_partial_objects",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_living_tv_sofa.json",
+      "target_room": "E102",
+      "variant": {"keep_categories": ["sofa", "table"]}
+    },
+    {
+      "case_id": "furnished_living_table_only",
+      "group": "furnished",
+      "viewpoint": "living_single_object",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_living_tv_sofa.json",
+      "target_room": "E102",
+      "variant": {"keep_categories": ["table"], "include_relations": false}
+    },
+
+    {
+      "case_id": "sparse_window_room_full",
+      "group": "sparse",
+      "viewpoint": "empty_room_window_full",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204"
+    },
+    {
+      "case_id": "sparse_window_only",
+      "group": "sparse",
+      "viewpoint": "empty_room_window_only",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204",
+      "variant": {"keep_categories": ["window"], "max_objects": 1, "include_relations": false},
+      "param_overrides": {"door_weight": 0.0}
+    },
+    {
+      "case_id": "sparse_two_windows",
+      "group": "sparse",
+      "viewpoint": "empty_room_two_openings",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204",
+      "variant": {"keep_categories": ["window"], "include_relations": false},
+      "param_overrides": {"door_weight": 0.0}
+    },
+    {
+      "case_id": "sparse_wall_floor_topology",
+      "group": "sparse",
+      "viewpoint": "empty_room_boundary_only",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204",
+      "variant": {"keep_categories": ["wall_surface", "floor_surface"]},
+      "param_overrides": {"door_weight": 0.0, "min_windows": 999}
+    },
+    {
+      "case_id": "sparse_door_window",
+      "group": "sparse",
+      "viewpoint": "empty_room_opening_pair",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204",
+      "variant": {"keep_categories": ["door", "window"], "max_objects": 2}
+    },
+    {
+      "case_id": "sparse_no_relations",
+      "group": "sparse",
+      "viewpoint": "empty_room_objects_only",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204",
+      "variant": {"include_relations": false}
+    },
+    {
+      "case_id": "sparse_window_wall",
+      "group": "sparse",
+      "viewpoint": "empty_room_window_wall",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204",
+      "variant": {"keep_categories": ["window", "wall_surface"]},
+      "param_overrides": {"door_weight": 0.0}
+    },
+    {
+      "case_id": "sparse_window_floor",
+      "group": "sparse",
+      "viewpoint": "empty_room_window_floor",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204",
+      "variant": {"keep_categories": ["window", "floor_surface"]},
+      "param_overrides": {"door_weight": 0.0}
+    },
+
+    {
+      "case_id": "minimal_kitchen_one_fridge",
+      "group": "minimal_info",
+      "viewpoint": "single_cue",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_kitchen.json",
+      "target_room": "E103",
+      "variant": {"keep_categories": ["fridge"], "max_objects": 1, "include_relations": false}
+    },
+    {
+      "case_id": "minimal_kitchen_one_storage",
+      "group": "minimal_info",
+      "viewpoint": "single_cue",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_kitchen.json",
+      "target_room": "E103",
+      "variant": {"keep_categories": ["storage"], "max_objects": 1, "include_relations": false}
+    },
+    {
+      "case_id": "minimal_kitchen_door_only",
+      "group": "minimal_info",
+      "viewpoint": "single_opening",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_kitchen.json",
+      "target_room": "E103",
+      "variant": {"keep_categories": ["door"], "include_relations": false}
+    },
+    {
+      "case_id": "minimal_living_tv_only",
+      "group": "minimal_info",
+      "viewpoint": "single_cue",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_living_tv_sofa.json",
+      "target_room": "E102",
+      "variant": {"keep_categories": ["tv"], "max_objects": 1, "include_relations": false}
+    },
+    {
+      "case_id": "minimal_living_sofa_only",
+      "group": "minimal_info",
+      "viewpoint": "single_cue",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_living_tv_sofa.json",
+      "target_room": "E102",
+      "variant": {"keep_categories": ["sofa"], "max_objects": 1, "include_relations": false}
+    },
+    {
+      "case_id": "minimal_living_floor_wall",
+      "group": "minimal_info",
+      "viewpoint": "boundary_only",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_living_tv_sofa.json",
+      "target_room": "E102",
+      "variant": {"keep_categories": ["floor_surface", "wall_surface"]},
+      "param_overrides": {"door_weight": 0.0}
+    },
+    {
+      "case_id": "minimal_sparse_window",
+      "group": "minimal_info",
+      "viewpoint": "single_opening",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204",
+      "variant": {"keep_categories": ["window"], "max_objects": 1, "include_relations": false},
+      "param_overrides": {"door_weight": 0.0}
+    },
+    {
+      "case_id": "minimal_sparse_wall_floor",
+      "group": "minimal_info",
+      "viewpoint": "single_boundary_pair",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204",
+      "variant": {"keep_categories": ["wall_surface", "floor_surface"], "max_objects": 2},
+      "param_overrides": {"door_weight": 0.0, "min_windows": 999}
+    },
+
+    {
+      "case_id": "view_variation_kitchen_full",
+      "group": "view_variation",
+      "viewpoint": "kitchen_angle_a",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_kitchen.json",
+      "target_room": "E103"
+    },
+    {
+      "case_id": "view_variation_kitchen_partial",
+      "group": "view_variation",
+      "viewpoint": "kitchen_angle_b_occluded",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_kitchen.json",
+      "target_room": "E103",
+      "variant": {"keep_categories": ["storage", "door"], "max_relations": 1}
+    },
+    {
+      "case_id": "view_variation_living_full",
+      "group": "view_variation",
+      "viewpoint": "living_angle_a",
+      "scenario_id": "combined_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_living_tv_sofa.json",
+      "target_room": "E102"
+    },
+    {
+      "case_id": "view_variation_sparse_full",
+      "group": "view_variation",
+      "viewpoint": "empty_room_angle_a",
+      "scenario_id": "opening_boundary_room_score",
+      "view_graph": "docs/examples/observed_view_graph_e_type_empty_window_room.json",
+      "target_room": "E204"
+    }
+  ]
+}
