@@ -64,6 +64,9 @@ data/interim/*
 data/output/*
 !data/output/.gitkeep
 
+# Local generated dashboard data
+web/etype_room_dashboard/etype_room_dashboard_data.json
+
 # Input datasets: keep only curated sample files in git
 data/input/*
 !data/input/.gitkeep

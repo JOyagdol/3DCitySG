@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>E-TYPE Room Geometry Dashboard</title>
+  <link rel="stylesheet" href="assets/css/dashboard.css" />
+</head>
+<body>
+  <main class="shell">
+    <aside class="panel left" id="leftPanel">
+      <button class="panel-toggle left-toggle" id="leftToggle" title="Toggle room menu">Menu</button>
+      <header>
+        <h1>E-TYPE Rooms</h1>
+        <p class="subtitle">
+          3D room-level dashboard for identifying E-TYPE room names, GML IDs,
+          and linked furniture from the CityGML scene graph.
+        </p>
+      </header>
+
+      <section class="controls">
+        <label>
+          Building envelope opacity <span id="buildingOpacityValue"></span>
+          <input id="buildingOpacity" type="range" min="0.02" max="0.55" value="0.20" step="0.01" />
+        </label>
+        <label>
+          Floor / level
+          <select id="levelFilter"></select>
+        </label>
+        <label>
+          Search room or GML ID
+          <input id="searchInput" type="search" placeholder="E103 or GML_..." />
+        </label>
+        <label>
+          Room opacity <span id="roomOpacityValue"></span>
+          <input id="roomOpacity" type="range" min="0.05" max="1" value="0.45" step="0.01" />
+        </label>
+        <label>
+          Furniture opacity <span id="furnitureOpacityValue"></span>
+          <input id="furnitureOpacity" type="range" min="0.05" max="1" value="0.82" step="0.01" />
+        </label>
+        <label>
+          View angle <span id="yawValue"></span>
+          <input id="yawControl" type="range" min="-180" max="180" value="-38" step="1" />
+        </label>
+        <label>
+          Pitch <span id="pitchValue"></span>
+          <input id="pitchControl" type="range" min="-5" max="82" value="52" step="1" />
+        </label>
+        <label>
+          Height scale <span id="heightScaleValue"></span>
+          <input id="heightScale" type="range" min="0.2" max="2.5" value="0.9" step="0.05" />
+        </label>
+        <div class="toggles">
+          <label class="check"><input id="showBuilding" type="checkbox" checked /> building envelope</label>
+          <label class="check"><input id="showLabels" type="checkbox" checked /> labels</label>
+          <label class="check"><input id="showFurniture" type="checkbox" checked /> furniture</label>
+          <label class="check"><input id="showEnvelope" type="checkbox" checked /> envelope</label>
+          <label class="check"><input id="showAllLevels" type="checkbox" /> all levels</label>
+        </div>
+        <button id="fitButton">Center / Fit View</button>
+      </section>
+
+      <section class="stats">
+        <div class="stat"><b id="buildingCount">0</b><span>Buildings</span></div>
+        <div class="stat"><b id="roomCount">0</b><span>Rooms</span></div>
+        <div class="stat"><b id="furnitureCount">0</b><span>Furniture</span></div>
+      </section>
+
+      <section id="loadError" class="error" hidden></section>
+      <section id="roomList" class="room-list"></section>
+    </aside>
+
+    <section class="panel canvas-panel">
+      <canvas id="mapCanvas"></canvas>
+      <div class="hud">
+        <strong>3D polygon/outline view.</strong>
+        Drag to rotate, Shift+drag to pan, mouse wheel to zoom, click a room to inspect metadata.
+        <div class="legend">
+          <span class="legend-item"><span class="swatch building"></span>Building envelope <span id="buildingLegendOpacityValue">0.20</span></span>
+          <span class="legend-item"><span class="swatch room"></span>Room polygon</span>
+          <span class="legend-item"><span class="swatch furniture"></span>Furniture outline</span>
+          <span class="legend-item"><span class="swatch selected"></span>Selected room</span>
+          <span class="legend-item"><span class="swatch envelope"></span>Visible room envelope</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel right" id="rightPanel">
+      <button class="panel-toggle right-toggle" id="rightToggle" title="Toggle detail menu">Detail</button>
+      <header>
+        <h2>Selected Room</h2>
+        <p class="subtitle">Click a room or use the list to inspect full GML ID and contained furniture.</p>
+      </header>
+      <section id="detail" class="detail"></section>
+    </aside>
+  </main>
+
+  <script src="assets/js/dashboard.js"></script>
+</body>
+</html>

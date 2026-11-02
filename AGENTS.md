@@ -104,6 +104,11 @@ This is specifically a **CityGML indoor/outdoor semantic-spatial graph construct
 - microservice architecture
 - support for every CityGML module at once
 
+Exception:
+
+- Lightweight local visualization dashboards are allowed when they are strictly research/debugging tools for inspecting generated graph artifacts, room IDs, geometry summaries, or retrieval evidence.
+- These dashboards must remain local/static unless the user explicitly expands scope to a product UI.
+
 ## Development Philosophy
 
 This is a migration project, but **not** a line-by-line translation project.
